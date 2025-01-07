@@ -2,7 +2,7 @@
 *.pyc
 **/__pycache__/
 
-# Media files
+# Media Files
 *.wav
 *.mp3
 *.gif
