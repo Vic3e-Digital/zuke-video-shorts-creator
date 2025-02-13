@@ -89,6 +89,8 @@ This is a v0.1 release and might have some bugs. Please report any issues on the
 
 ### Other useful Video AI Projects
 
+[AI Influencer generator](https://github.com/SamurAIGPT/AI-Influencer-Generator)
+
 [Text to Video AI](https://github.com/SamurAIGPT/Text-To-Video-AI)
 
 [Faceless Video Generator](https://github.com/SamurAIGPT/Faceless-Video-Generator)
