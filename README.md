@@ -4,10 +4,6 @@ AI Youtube Shorts Generator is a Python tool designed to generate engaging YouTu
 
 If you wish to add shorts generation into your application, here is an api to create shorts from long form videos :- https://docs.vadoo.tv/docs/guide/create-ai-clips
 
-### Youtube tutorial -> https://youtu.be/dKMueTMW1Nw
-
-### Medium tutorial -> https://medium.com/@anilmatcha/ai-youtube-shorts-generator-in-python-a-complete-tutorial-c3df6523b362
-
 ![longshorts](https://github.com/user-attachments/assets/3f5d1abf-bf3b-475f-8abf-5e253003453a)
 
 ## Features
