@@ -39,6 +39,7 @@ def crop_to_vertical(input_video_path, output_video_path):
     Fps = fps
     print(fps)
     count = 0
+    last_valid_face = None
     for _ in range(total_frames):
         ret, frame = cap.read()
         if not ret:
@@ -48,16 +49,34 @@ def crop_to_vertical(input_video_path, output_video_path):
         faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
         if len(faces) >-1:
             if len(faces) == 0:
-                (x, y, w, h) = Frames[count]
+                # Use last valid face coordinates if Frames[count] is None
+                face_data = Frames[count]
+                if face_data is not None and isinstance(face_data, (list, tuple)) and len(face_data) == 4:
+                    (x, y, w, h) = face_data
+                    last_valid_face = (x, y, w, h)
+                elif last_valid_face is not None:
+                    (x, y, w, h) = last_valid_face
+                else:
+                    # Fallback to center crop if no valid face data
+                    x = x_start
+                    y = 0
+                    w = vertical_width
+                    h = vertical_height
+            else:
+                # Use detected face
+                (x, y, w, h) = faces[0]
+                last_valid_face = (x, y, w, h)
 
-            # (x, y, w, h) = faces[0]  
-            try:
-                #check if face 1 is active
+            # Only check for active face if Frames[count] is valid
+            if Frames[count] is not None and isinstance(Frames[count], (list, tuple)) and len(Frames[count]) == 4:
                 (X, Y, W, H) = Frames[count]
-            except Exception as e:
-                print(e)
-                (X, Y, W, H) = Frames[count][0]
-                print(Frames[count][0])
+            elif last_valid_face is not None:
+                (X, Y, W, H) = last_valid_face
+            else:
+                X = x_start
+                Y = 0
+                W = vertical_width
+                H = vertical_height
             
             for f in faces:
                 x1, y1, w1, h1 = f
