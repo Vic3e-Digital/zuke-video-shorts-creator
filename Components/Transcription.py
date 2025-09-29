@@ -6,7 +6,7 @@ def transcribeAudio(audio_path):
         print("Transcribing audio...")
         Device = "cuda" if torch.cuda.is_available() else "cpu"
         print(Device)
-        model = WhisperModel("base.en", device="cuda" if torch.cuda.is_available() else "cpu")
+        model = WhisperModel("base.en", device="cpu" if torch.cuda.is_available() else "cpu")
         print("Model loaded")
         segments, info = model.transcribe(audio=audio_path, beam_size=5, language="en", max_new_tokens=128, condition_on_previous_text=False)
         segments = list(segments)
