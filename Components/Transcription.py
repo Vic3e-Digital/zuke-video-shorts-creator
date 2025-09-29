@@ -20,7 +20,7 @@ def transcribeAudio(audio_path):
 if __name__ == "__main__":
     audio_path = "audio.wav"
     transcriptions = transcribeAudio(audio_path)
-    print("Done")
+    # print("Done")
     TransText = ""
 
     for text, start, end in transcriptions:
