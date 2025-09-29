@@ -72,8 +72,8 @@ def GetHighlight(Transcription):
     chain = prompt |llm.with_structured_output(JSONResponse,method="function_calling")
     response = chain.invoke({"Transcription":Transcription})
     Start,End = int(response.start), int(response.end)
-    print(f"Start is {Start}")
-    print(f"End is {End}\n\n")
+    # print(f"Start is {Start}")
+    # print(f"End is {End}\n\n")
     if Start==End:
         Ask = input("Error - Get Highlights again (y/n) -> ").lower()
         if Ask == "y":
