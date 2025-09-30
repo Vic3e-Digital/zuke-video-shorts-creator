@@ -21,7 +21,8 @@ if Vid:
                 TransText += (f"{start} - {end}: {text}")
 
             start , stop = GetHighlight(TransText)
-            if start != 0 and stop != 0:
+            #handle the case when the highlight starts from 0s
+            if start>0 and stop>0 and stop>start:
                 print(f"Start: {start} , End: {stop}")
 
                 Output = "Out.mp4"
