@@ -26,9 +26,9 @@ class JSONResponse(BaseModel):
 
 system = """
 
-Based on the Transcription user provides with start and end, highlight the most interesting <1 minute segment. keep the time stamps for the clip to start and end.
+Based on the Transcription user provides with start and end, highlight the most interesting segment that's less than 3 minutes long. keep the time stamps for the clip to start and end.
 
-Follow this Format and return in valid json 
+Follow this Format and return valid json 
 [{{
 start: "Start time of the clip",
 content: "Highlight Text",
@@ -54,8 +54,8 @@ I WILL DO JSON['start'] AND IF IT DOESNT WORK THEN...
 def GetHighlight(Transcription):
     from langchain_openai import ChatOpenAI
     llm = ChatOpenAI(
-        model="gpt-4o-2024-05-13",
-        temperature=0.7,
+        model="gpt-5-nano",  # Much cheaper than gpt-4o
+        temperature=1.0,
         api_key = api_key
     )
 

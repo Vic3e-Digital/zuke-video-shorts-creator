@@ -46,9 +46,9 @@ def add_subtitles_to_video(input_video, output_video, transcriptions, video_star
             text,
             fontsize=80,
             color='#2699ff',
-            stroke_color='white',
+            stroke_color='black',
             stroke_width=2,
-            font='FranklinGothic',
+            font='Franklin-Gothic',
             method='caption',
             size=(video.w - 100, None)  # Leave 50px margin on each side
         )

@@ -8,6 +8,7 @@
 *.gif
 *.mp4
 *.webm
+*.m4a
 
 # Virtual environment
 venv/
