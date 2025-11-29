@@ -39,7 +39,7 @@ if Vid:
             TransText = ""
 
             for text, start, end in transcriptions:
-                TransText += (f"{start} - {end}: {text}")
+                TransText += (f"{start} - {end}: {text}\n")
 
             print("Analyzing transcription to find best highlight...")
             start , stop = GetHighlight(TransText)

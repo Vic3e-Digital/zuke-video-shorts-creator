@@ -26,15 +26,15 @@ class JSONResponse(BaseModel):
 
 system = """
 The input contains a timestamped transcription of a video.
-Select a <2 minute segment from the transcription that is surprising or controversial.
+Select a 2-minute segment from the transcription that contains something interesting, surprising, controversial, or thought-provoking.
 The selected text should contain complete sentences. Do not cut the sentences in the middle.
 The sentences should collectively form a complete thought.
 Return a JSON object with the following structure:
 ## Output 
 [{{
-    start: "Start time of the segment",
-    content: "Selected text (string)",
-    end: "End time of the segment"
+    start: "Start time of the segment in seconds (number)",
+    content: "The transcribed text from the selected segment (clean text only, NO timestamps)",
+    end: "End time of the segment in seconds (number)"
 }}]
 
 ## Input
@@ -66,6 +66,14 @@ def GetHighlight(Transcription):
     chain = prompt |llm.with_structured_output(JSONResponse,method="function_calling")
     response = chain.invoke({"Transcription":Transcription})
     Start,End = int(response.start), int(response.end)
+    
+    # Log the selected segment
+    print(f"\n{'='*60}")
+    print(f"SELECTED SEGMENT DETAILS:")
+    print(f"Time: {Start}s - {End}s ({End-Start}s duration)")
+    print(f"Content: {response.content}")
+    print(f"{'='*60}\n")
+    
     # print(f"Start is {Start}")
     # print(f"End is {End}\n\n")
     if Start==End:
