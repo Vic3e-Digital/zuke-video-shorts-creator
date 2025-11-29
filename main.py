@@ -75,7 +75,49 @@ if Vid:
 
             print("Analyzing transcription to find best highlight...")
             start , stop = GetHighlight(TransText)
-            print(f"✓ Highlight selected: {start}s - {stop}s")
+            
+            # Interactive approval loop with timeout
+            import select
+            
+            approved = False
+            while not approved:
+                print(f"\n{'='*60}")
+                print(f"SELECTED SEGMENT DETAILS:")
+                print(f"Time: {start}s - {stop}s ({stop-start}s duration)")
+                print(f"{'='*60}\n")
+                
+                print("Options:")
+                print("  [Enter/y] Approve and continue")
+                print("  [r] Regenerate selection")
+                print("  [n] Cancel")
+                print("\nAuto-approving in 15 seconds if no input...")
+                
+                regenerate = False
+                
+                try:
+                    # Check if stdin is ready within 15 seconds
+                    ready, _, _ = select.select([sys.stdin], [], [], 15)
+                    if ready:
+                        user_input = sys.stdin.readline().strip().lower()
+                        if user_input == 'r':
+                            print("\nRegenerating selection...")
+                            start, stop = GetHighlight(TransText)
+                            regenerate = True
+                        elif user_input == 'n':
+                            print("Cancelled by user")
+                            sys.exit(0)
+                        else:
+                            print("Approved by user")
+                            approved = True
+                    else:
+                        print("\nTimeout - auto-approving selection")
+                        approved = True
+                except:
+                    # Fallback if select doesn't work (e.g., Windows)
+                    print("\nAuto-approving (timeout not available on this platform)")
+                    approved = True
+            
+            print(f"\n✓ Final highlight: {start}s - {stop}s")
             #handle the case when the highlight starts from 0s
             if start>0 and stop>0 and stop>start:
                 print(f"\nCreating short video: {start}s - {stop}s ({stop-start}s duration)")
