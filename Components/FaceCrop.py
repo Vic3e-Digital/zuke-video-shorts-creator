@@ -49,31 +49,58 @@ def crop_to_vertical(input_video_path, output_video_path):
         # Offset slightly to the right to prevent right-side cutoff
         avg_face_x += 60
         x_start = max(0, min(avg_face_x - vertical_width // 2, original_width - vertical_width))
-        print(f"Face detected. Using static crop at x={x_start}")
+        print(f"✓ Face detected. Using face-centered crop at x={x_start}")
+        use_resize = False
     else:
-        # No face detected, use center crop
-        x_start = (original_width - vertical_width) // 2
-        print(f"No face detected. Using center crop at x={x_start}")
+        # No face detected - likely a screen recording
+        # Resize entire video to fit within vertical frame
+        print(f"✗ No face detected. Resizing entire video to fit vertical frame")
+        use_resize = True
+        x_start = 0  # Not used for resize mode
     
     x_end = x_start + vertical_width
 
     # Reset video to beginning
     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
-    # Write output with static crop
+    # Write output
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (vertical_width, vertical_height))
     global Fps
     Fps = fps
 
     frame_count = 0
+    
+    if use_resize:
+        # Calculate scaling to fit source video into vertical frame
+        scale = min(vertical_width / original_width, vertical_height / original_height)
+        scaled_width = int(original_width * scale)
+        scaled_height = int(original_height * scale)
+        
+        # Calculate offsets to center the scaled video
+        offset_x = (vertical_width - scaled_width) // 2
+        offset_y = (vertical_height - scaled_height) // 2
+        
+        print(f"Scaling video from {original_width}x{original_height} to {scaled_width}x{scaled_height}")
+        print(f"Letterboxing with offset: x={offset_x}, y={offset_y}")
+    
     while True:
         ret, frame = cap.read()
         if not ret:
             break
         
-        # Apply static crop
-        cropped_frame = frame[:, x_start:x_end]
+        if use_resize:
+            # Resize entire frame to fit
+            resized_frame = cv2.resize(frame, (scaled_width, scaled_height), interpolation=cv2.INTER_LANCZOS4)
+            
+            # Create blank canvas with letterboxing
+            canvas = np.zeros((vertical_height, vertical_width, 3), dtype=np.uint8)
+            canvas[offset_y:offset_y+scaled_height, offset_x:offset_x+scaled_width] = resized_frame
+            
+            cropped_frame = canvas
+        else:
+            # Apply static crop for face-detected videos
+            cropped_frame = frame[:, x_start:x_end]
         
         if cropped_frame.shape[1] == 0:
             print(f"Warning: Empty crop at frame {frame_count}")
