@@ -25,23 +25,20 @@ class JSONResponse(BaseModel):
     end: float = Field(description="End time for the highlighted clip")
 
 system = """
-
-Based on the Transcription user provides with start and end, highlight the most interesting segment that's less than 3 minutes long. keep the time stamps for the clip to start and end.
-
-Follow this Format and return valid json 
+The input contains a timestamped transcription of a video.
+Select the most interesting <2 minute segment from the transcription.
+The selected text should contain complete sentences. Do not cut the sentences in the middle.
+The sentences should collectively form a complete thought.
+Return a JSON object with the following structure:
+## Output 
 [{{
-start: "Start time of the clip",
-content: "Highlight Text",
-end: "End Time for the highlighted clip"
+    start: "Start time of the segment",
+    content: "Selected text (string)",
+    end: "End time of the segment"
 }}]
 
-Return Proper JSON only
-
-I WILL DO JSON['start'] AND IF IT DOESNT WORK THEN...
-
-<TRANSCRIPTION>
+## Input
 {Transcription}
-
 """
 
 # User = """
