@@ -6,13 +6,18 @@ AI-powered tool to automatically generate engaging YouTube Shorts from long-form
 
 ## Features
 
-- **🎬 Video Processing**: Supports both YouTube URLs and local video files
-- **🎤 AI Transcription**: GPU-accelerated Whisper transcription with CUDA support
-- **🤖 Smart Highlight Detection**: GPT-4o-mini identifies the most interesting 2-minute segments
-- **📝 Automatic Subtitles**: Burns stylized captions directly into the video
-- **🎯 Face Detection**: Static face detection with intelligent cropping (no jerky camera movement)
-- **📱 Vertical Format**: Automatic 9:16 crop for TikTok/YouTube Shorts/Instagram Reels
-- **⚙️ Command-Line Support**: Pass URLs/files as arguments for automation
+- **🎬 Flexible Input**: Supports both YouTube URLs and local video files
+- **🎤 GPU-Accelerated Transcription**: CUDA-enabled Whisper for fast speech-to-text
+- **🤖 AI Highlight Selection**: GPT-5-nano automatically finds the most engaging 2-minute segments
+- **✅ Interactive Approval**: Review and approve/regenerate selections with 15-second auto-approve timeout
+- **📝 Auto Subtitles**: Stylized captions with Franklin Gothic font burned into video
+- **🎯 Smart Cropping**: 
+  - **Face videos**: Static face-centered crop (no jerky movement)
+  - **Screen recordings**: Half-width display with smooth motion tracking (1 shift/second max)
+- **📱 Vertical Format**: Perfect 9:16 aspect ratio for TikTok/YouTube Shorts/Instagram Reels
+- **⚙️ Automation Ready**: CLI arguments, auto-quality selection, timeout-based approvals
+- **🔄 Concurrent Execution**: Unique session IDs allow multiple instances to run simultaneously
+- **📦 Clean Output**: Slugified filenames (e.g., `my-video-title_short.mp4`) and automatic temp file cleanup
 
 ## Installation
 
@@ -81,50 +86,91 @@ AI-powered tool to automatically generate engaging YouTube Shorts from long-form
 
 ## How It Works
 
-1. **Download/Load Video**: Fetches from YouTube or loads local file
-2. **Extract Audio**: Converts video audio to WAV format
-3. **Transcribe**: Uses faster-whisper with CUDA for speech-to-text
-4. **Analyze**: GPT-4o-mini selects the most engaging 2-minute segment
-5. **Extract Clip**: Crops the selected timeframe from original video
-6. **Detect Face**: Analyzes first 30 frames to find optimal face position
-7. **Crop Vertical**: Creates 9:16 aspect ratio with static face-centered crop
-8. **Add Subtitles**: Burns stylized captions with Franklin Gothic font
+1. **Download/Load**: Fetches from YouTube (highest quality) or loads local file
+2. **Extract Audio**: Converts to WAV format
+3. **Transcribe**: GPU-accelerated Whisper transcription (~30s for 5min video)
+4. **AI Analysis**: GPT-4o-mini selects most engaging 2-minute segment
+5. **Interactive Approval**: Review selection, regenerate if needed, or auto-approve in 15s
+6. **Extract Clip**: Crops selected timeframe
+7. **Smart Crop**: 
+   - Detects faces → static face-centered vertical crop
+   - No faces → half-width screen recording with motion tracking
+8. **Add Subtitles**: Burns Franklin Gothic captions with blue text/black outline
 9. **Combine Audio**: Merges audio track with final video
+10. **Cleanup**: Removes all temporary files
 
-**Output**: `Final.mp4` in the project directory
+**Output**: `{video-title}_short.mp4` with slugified filename
+
+## Interactive Workflow
+
+After AI selects a highlight, you'll see:
+
+```
+============================================================
+SELECTED SEGMENT DETAILS:
+Time: 68s - 187s (119s duration)
+============================================================
+
+Options:
+  [Enter/y] Approve and continue
+  [r] Regenerate selection
+  [n] Cancel
+
+Auto-approving in 15 seconds if no input...
+```
+
+- Press **Enter** or **y** to approve
+- Press **r** to regenerate a different selection (can repeat multiple times)
+- Press **n** to cancel
+- Wait 15 seconds to auto-approve (perfect for automation)
 
 ## Configuration
 
 ### Subtitle Styling
-Edit `Components/Subtitles.py` to customize:
+Edit `Components/Subtitles.py`:
 - **Font**: Line 51 (`font='Franklin-Gothic'`)
-- **Font Size**: Line 47 (`fontsize=80`)
-- **Text Color**: Line 48 (`color='#2699ff'`)
-- **Outline Color**: Line 49 (`stroke_color='black'`)
-- **Outline Width**: Line 50 (`stroke_width=2`)
+- **Size**: Line 47 (`fontsize=80`)
+- **Color**: Line 48 (`color='#2699ff'`)
+- **Outline**: Lines 49-50 (`stroke_color='black'`, `stroke_width=2`)
 
-### Highlight Selection
-Edit `Components/LanguageTasks.py` to customize:
-- **Prompt**: Line 28 (adjust what makes content "interesting")
+### Highlight Selection Criteria
+Edit `Components/LanguageTasks.py`:
+- **Prompt**: Line 29 (adjust what's "interesting, useful, surprising, controversial, or thought-provoking")
 - **Model**: Line 54 (`model="gpt-4o-mini"`)
 - **Temperature**: Line 55 (`temperature=1.0`)
 
+### Motion Tracking
+Edit `Components/FaceCrop.py`:
+- **Update frequency**: Line 93 (`update_interval = int(fps)`) - currently 1 shift/second
+- **Smoothing**: Line 115 (`0.90 * smoothed_x + 0.10 * target_x`) - currently 90%/10%
+- **Motion threshold**: Line 107 (`motion_threshold = 2.0`)
+
 ### Video Quality
 Edit `Components/Subtitles.py` and `Components/FaceCrop.py`:
-- **Bitrate**: Line 74 in Subtitles.py (`bitrate='3000k'`)
-- **Preset**: Line 73 (`preset='medium'`)
+- **Bitrate**: Subtitles.py line 74 (`bitrate='3000k'`)
+- **Preset**: Subtitles.py line 73 (`preset='medium'`)
+
+## Concurrent Execution
+
+Run multiple instances simultaneously:
+```bash
+./run.sh "https://youtu.be/VIDEO1" &
+./run.sh "https://youtu.be/VIDEO2" &
+./run.sh "/path/to/video3.mp4" &
+```
+
+Each instance gets a unique session ID and temporary files, preventing conflicts.
 
 ## Troubleshooting
 
 ### CUDA/GPU Issues
-If transcription fails with CUDA errors:
 ```bash
-# Verify CUDA libraries are accessible
+# Verify CUDA libraries
 export LD_LIBRARY_PATH=$(find $(pwd)/venv/lib/python3.10/site-packages/nvidia -name "lib" -type d | paste -sd ":" -)
 ```
 The `run.sh` script handles this automatically.
 
-### No Subtitles Appearing
+### No Subtitles
 Ensure ImageMagick policy allows file operations:
 ```bash
 grep 'pattern="@\*"' /etc/ImageMagick-6/policy.xml
@@ -132,9 +178,9 @@ grep 'pattern="@\*"' /etc/ImageMagick-6/policy.xml
 ```
 
 ### Face Detection Issues
-- Ensure video has visible faces in first 30 frames
-- For low-resolution videos, face detection may be less reliable
-- Adjust `minSize` parameter in `FaceCrop.py` if needed
+- Video needs visible faces in first 30 frames
+- For screen recordings, automatic motion tracking applies
+- Low-resolution videos may have less reliable detection
 
 ## Contributing
 
