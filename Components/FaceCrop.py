@@ -63,8 +63,8 @@ def crop_to_vertical(input_video_path, output_video_path):
 
     # For screen recordings, calculate scale factor for half-width display
     if use_motion_tracking:
-        # Scale so half the original width fits into vertical_width
-        target_display_width = original_width / 2
+        # Scale so original width fits into vertical_width
+        target_display_width = original_width * 0.67
         scale = vertical_width / target_display_width
         scaled_width = int(original_width * scale)
         scaled_height = int(original_height * scale)
