@@ -44,7 +44,7 @@ def add_subtitles_to_video(input_video, output_video, transcriptions, video_star
         # Create text clip with styling
         txt_clip = TextClip(
             text,
-            fontsize=80,
+            fontsize=70,
             color='#2699ff',
             stroke_color='black',
             stroke_width=2,
