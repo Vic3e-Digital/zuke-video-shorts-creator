@@ -27,8 +27,9 @@ class JSONResponse(BaseModel):
 system = """
 The input contains a timestamped transcription of a video.
 Select a 2-minute segment from the transcription that contains something interesting, useful, surprising, controversial, or thought-provoking.
-The selected text should contain complete sentences. Do not cut the sentences in the middle.
-The sentences should collectively form a complete thought.
+The selected text should contain only complete sentences.
+Do not cut the sentences in the middle.
+The selected text should form a complete thought.
 Return a JSON object with the following structure:
 ## Output 
 [{{
