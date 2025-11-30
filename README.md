@@ -84,6 +84,19 @@ AI-powered tool to automatically generate engaging YouTube Shorts from long-form
 ./run.sh "/path/to/your/video.mp4"
 ```
 
+### Batch Processing Multiple URLs
+Create a `urls.txt` file with one URL per line, then:
+
+```bash
+# Process all URLs sequentially with auto-approve
+xargs -a urls.txt -I{} ./run.sh --auto-approve {}
+```
+
+Or without auto-approve (will prompt for each):
+```bash
+xargs -a urls.txt -I{} ./run.sh {}
+```
+
 ## How It Works
 
 1. **Download/Load**: Fetches from YouTube (highest quality) or loads local file

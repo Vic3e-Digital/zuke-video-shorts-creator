@@ -13,6 +13,11 @@ import re
 session_id = str(uuid.uuid4())[:8]
 print(f"Session ID: {session_id}")
 
+# Check for auto-approve flag (for batch processing)
+auto_approve = "--auto-approve" in sys.argv
+if auto_approve:
+    sys.argv.remove("--auto-approve")
+
 # Check if URL/file was provided as command-line argument
 if len(sys.argv) > 1:
     url_or_file = sys.argv[1]
@@ -76,46 +81,53 @@ if Vid:
             print("Analyzing transcription to find best highlight...")
             start , stop = GetHighlight(TransText)
             
-            # Interactive approval loop with timeout
+            # Interactive approval loop with timeout (skip if auto-approve)
             import select
             
-            approved = False
-            while not approved:
-                print(f"\n{'='*60}")
-                print(f"SELECTED SEGMENT DETAILS:")
-                print(f"Time: {start}s - {stop}s ({stop-start}s duration)")
-                print(f"{'='*60}\n")
-                
-                print("Options:")
-                print("  [Enter/y] Approve and continue")
-                print("  [r] Regenerate selection")
-                print("  [n] Cancel")
-                print("\nAuto-approving in 15 seconds if no input...")
-                
-                regenerate = False
-                
-                try:
-                    # Check if stdin is ready within 15 seconds
-                    ready, _, _ = select.select([sys.stdin], [], [], 15)
-                    if ready:
-                        user_input = sys.stdin.readline().strip().lower()
-                        if user_input == 'r':
-                            print("\nRegenerating selection...")
-                            start, stop = GetHighlight(TransText)
-                            regenerate = True
-                        elif user_input == 'n':
-                            print("Cancelled by user")
-                            sys.exit(0)
+            approved = auto_approve  # Auto-approve if flag is set
+            
+            if not auto_approve:
+                while not approved:
+                    print(f"\n{'='*60}")
+                    print(f"SELECTED SEGMENT DETAILS:")
+                    print(f"Time: {start}s - {stop}s ({stop-start}s duration)")
+                    print(f"{'='*60}\n")
+                    
+                    print("Options:")
+                    print("  [Enter/y] Approve and continue")
+                    print("  [r] Regenerate selection")
+                    print("  [n] Cancel")
+                    print("\nAuto-approving in 15 seconds if no input...")
+                    
+                    regenerate = False
+                    
+                    try:
+                        # Check if stdin is ready within 15 seconds
+                        ready, _, _ = select.select([sys.stdin], [], [], 15)
+                        if ready:
+                            user_input = sys.stdin.readline().strip().lower()
+                            if user_input == 'r':
+                                print("\nRegenerating selection...")
+                                start, stop = GetHighlight(TransText)
+                                regenerate = True
+                            elif user_input == 'n':
+                                print("Cancelled by user")
+                                sys.exit(0)
+                            else:
+                                print("Approved by user")
+                                approved = True
                         else:
-                            print("Approved by user")
+                            print("\nTimeout - auto-approving selection")
                             approved = True
-                    else:
-                        print("\nTimeout - auto-approving selection")
+                    except:
+                        # Fallback if select doesn't work (e.g., Windows)
+                        print("\nAuto-approving (timeout not available on this platform)")
                         approved = True
-                except:
-                    # Fallback if select doesn't work (e.g., Windows)
-                    print("\nAuto-approving (timeout not available on this platform)")
-                    approved = True
+            else:
+                print(f"\n{'='*60}")
+                print(f"SELECTED SEGMENT: {start}s - {stop}s ({stop-start}s duration)")
+                print(f"{'='*60}")
+                print("Auto-approved (batch mode)\n")
             
             print(f"\n✓ Final highlight: {start}s - {stop}s")
             #handle the case when the highlight starts from 0s
