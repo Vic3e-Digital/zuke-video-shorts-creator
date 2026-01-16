@@ -1,5 +1,6 @@
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 import re
+import os
 
 def add_subtitles_to_video(input_video, output_video, transcriptions, video_start_time=0):
     """
@@ -36,9 +37,16 @@ def add_subtitles_to_video(input_video, output_video, transcriptions, video_star
     # Create text clips for each transcription segment
     text_clips = []
     
-    # Scale font size proportionally to video height (~6.5% of height)
-    # 1080p → 70px, 720p → 47px
-    dynamic_fontsize = int(video.h * 0.065)
+    # Get subtitle styling from environment variables with defaults
+    subtitle_font = os.getenv('SUBTITLE_FONT', 'Franklin-Gothic')
+    subtitle_size_ratio = float(os.getenv('SUBTITLE_SIZE_RATIO', '0.065'))
+    subtitle_color = os.getenv('SUBTITLE_COLOR', '#2699ff')
+    subtitle_stroke_color = os.getenv('SUBTITLE_STROKE_COLOR', 'black')
+    subtitle_stroke_width = int(os.getenv('SUBTITLE_STROKE_WIDTH', '2'))
+    
+    # Scale font size proportionally to video height
+    # 1080p → 70px, 720p → 47px (with default 0.065 ratio)
+    dynamic_fontsize = int(video.h * subtitle_size_ratio)
     
     for text, start, end in relevant_transcriptions:
         # Clean up text
@@ -46,20 +54,20 @@ def add_subtitles_to_video(input_video, output_video, transcriptions, video_star
         if not text:
             continue
             
-        # Create text clip with styling
+        # Create text clip with configurable styling
         txt_clip = TextClip(
             text,
             fontsize=dynamic_fontsize,
-            color='#2699ff',
-            stroke_color='black',
-            stroke_width=2,
-            font='Franklin-Gothic',
+            color=subtitle_color,
+            stroke_color=subtitle_stroke_color,
+            stroke_width=subtitle_stroke_width,
+            font=subtitle_font,
             method='caption',
             size=(video.w - 100, None)  # Leave 50px margin on each side
         )
         
-        # Position at bottom center
-        txt_clip = txt_clip.set_position(('center', video.h - txt_clip.h - 100))
+        # Position between middle and bottom (at 75% of video height)
+        txt_clip = txt_clip.set_position(('center', video.h * 0.75))
         txt_clip = txt_clip.set_start(start)
         txt_clip = txt_clip.set_duration(end - start)
         

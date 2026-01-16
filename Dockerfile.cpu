@@ -1,0 +1,57 @@
+# CPU-only version without NVIDIA CUDA (for testing/development)
+FROM ubuntu:22.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.10 \
+    python3.10-venv \
+    python3-pip \
+    ffmpeg \
+    libavdevice-dev \
+    libavfilter-dev \
+    libopus-dev \
+    libvpx-dev \
+    pkg-config \
+    libsrtp2-dev \
+    imagemagick \
+    git \
+    wget \
+    fontconfig \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Bebas Neue font
+RUN wget -O /tmp/BebasNeue-Regular.ttf https://github.com/google/fonts/raw/main/ofl/bebasneue/BebasNeue-Regular.ttf \
+    && mkdir -p /usr/share/fonts/truetype/bebas \
+    && cp /tmp/BebasNeue-Regular.ttf /usr/share/fonts/truetype/bebas/ \
+    && fc-cache -f -v \
+    && rm /tmp/BebasNeue-Regular.ttf
+
+# Fix ImageMagick security policy for subtitle rendering
+RUN sed -i 's/rights="none" pattern="@\*"/rights="read|write" pattern="@*"/' /etc/ImageMagick-6/policy.xml
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements first for better Docker layer caching
+COPY requirements-cpu.txt .
+
+# Install Python dependencies
+RUN pip3 install --no-cache-dir -r requirements-cpu.txt
+
+# Copy application code
+COPY . .
+
+# Create output directory
+RUN mkdir -p /app/output
+
+# Make run.sh executable
+RUN chmod +x run.sh
+
+# Default command (can be overridden)
+CMD ["python3", "main.py"]

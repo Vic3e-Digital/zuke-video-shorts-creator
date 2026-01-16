@@ -7,8 +7,14 @@ AI-powered tool to automatically generate engaging YouTube Shorts from long-form
 ## Features
 
 - **🎬 Flexible Input**: Supports both YouTube URLs and local video files
+- **� Multiple Clips**: Generate 1-10 viral clips from a single video (default: 3)
+- **🎨 Multiple Output Types**: 
+  - **Original**: Vertical crop without subtitles
+  - **Original-Dimension**: Preserves input video dimensions without subtitles
+  - **Subtitled**: Vertical crop with burned-in subtitles  
+  - **Original-Subtitled**: Original aspect ratio with subtitles
 - **🎤 GPU-Accelerated Transcription**: CUDA-enabled Whisper for fast speech-to-text
-- **🤖 AI Highlight Selection**: GPT-5-nano automatically finds the most engaging 2-minute segments
+- **🤖 AI Highlight Selection**: GPT-4o-mini automatically finds the most engaging 2-minute segments
 - **✅ Interactive Approval**: Review and approve/regenerate selections with 15-second auto-approve timeout
 - **📝 Auto Subtitles**: Stylized captions with Franklin Gothic font burned into video
 - **🎯 Smart Cropping**: 
@@ -17,7 +23,7 @@ AI-powered tool to automatically generate engaging YouTube Shorts from long-form
 - **📱 Vertical Format**: Perfect 9:16 aspect ratio for TikTok/YouTube Shorts/Instagram Reels
 - **⚙️ Automation Ready**: CLI arguments, auto-quality selection, timeout-based approvals
 - **🔄 Concurrent Execution**: Unique session IDs allow multiple instances to run simultaneously
-- **📦 Clean Output**: Slugified filenames (e.g., `my-video-title_short.mp4`) and automatic temp file cleanup
+- **📦 Clean Output**: Slugified filenames and automatic temp file cleanup
 
 ## Installation
 
@@ -66,36 +72,218 @@ AI-powered tool to automatically generate engaging YouTube Shorts from long-form
    OPENAI_API=your_openai_api_key_here
    ```
 
+## Docker Setup (Recommended)
+
+For easier deployment and consistent environments, use Docker:
+
+### Prerequisites for Docker
+- Docker Desktop installed and running
+- Azure OpenAI account (or OpenAI API key)
+
+### Docker Installation Steps
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/SamurAIGPT/AI-Youtube-Shorts-Generator.git
+   cd AI-Youtube-Shorts-Generator
+   ```
+
+2. **Set up environment variables for Azure OpenAI:**
+   
+   Create a `.env` file with your Azure OpenAI credentials:
+   ```bash
+   AZURE_OPENAI_API_KEY=your_azure_openai_api_key
+   AZURE_OPENAI_ENDPOINT=https://your-resource-name.cognitiveservices.azure.com/
+   AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4.1
+   AZURE_OPENAI_API_VERSION=2024-04-01-preview
+   
+   # Optional: Subtitle Styling Configuration
+   SUBTITLE_FONT=Franklin-Gothic
+   SUBTITLE_SIZE_RATIO=0.065
+   SUBTITLE_COLOR=#2699ff
+   SUBTITLE_STROKE_COLOR=black
+   SUBTITLE_STROKE_WIDTH=2
+   ```
+
+   **Note**: Find your exact endpoint and deployment name in the Azure Portal under your OpenAI resource.
+
+3. **Build the CPU-optimized Docker image:**
+   ```bash
+   docker build -f Dockerfile.cpu -t ai-youtube-shorts-generator:cpu .
+   ```
+
+4. **Run with Docker:**
+   ```bash
+   docker run --rm -it \
+     --env-file .env \
+     -v "$(pwd)/output:/app/output" \
+     ai-youtube-shorts-generator:cpu \
+     python3 main.py "https://youtu.be/VIDEO_ID"
+   ```
+
+### Accessing Processed Videos
+
+All generated short videos are saved to the `output` folder in your project directory:
+
+- **Output location**: `./output/` (automatically created)
+- **Filename format**: `{video-title}_{session-id}_short.mp4`
+- **Example**: `empowering-women-leaders-mentorship-&-community-in-higher-education-wlhe2025_f7325328_short.mp4`
+
+To view your processed videos:
+```bash
+# List all generated videos
+ls -la output/
+
+# Play video (macOS)
+open output/your-video-name_short.mp4
+
+# Play video (Linux)
+xdg-open output/your-video-name_short.mp4
+```
+
+The videos are ready to upload directly to:
+- YouTube Shorts
+- TikTok
+- Instagram Reels
+- Any vertical video platform (9:16 aspect ratio)
+
 ## Usage
 
-### With YouTube URL (Interactive)
+### Quick Start Examples
+
+#### Generate 3 clips with default output types (original + subtitled):
 ```bash
-./run.sh
-# Then enter YouTube URL when prompted
-# You'll be able to select video resolution (5s timeout, auto-selects highest)
+python main.py "https://youtu.be/VIDEO_ID"
 ```
 
-### With YouTube URL (Command-Line)
+#### Generate 5 clips with all output types:
 ```bash
-./run.sh "https://youtu.be/VIDEO_ID"
+python main.py --clips 5 --output-types original subtitled original-subtitled "https://youtu.be/VIDEO_ID"
 ```
 
-### With Local Video File
+#### Batch process with auto-approve:
 ```bash
-./run.sh "/path/to/your/video.mp4"
+python main.py --auto-approve --clips 3 "https://youtu.be/VIDEO_ID"
 ```
 
-### Batch Processing Multiple URLs
+### Command Line Options
+
+```bash
+python main.py [OPTIONS] VIDEO_URL_OR_PATH
+
+Options:
+  --clips N                     Number of clips to generate (default: 3)
+  --output-types TYPE [TYPE...] Output types: original, subtitled, original-subtitled
+                               (default: original subtitled)
+  --auto-approve               Skip interactive approval (for batch processing)
+  --help                       Show help message
+```
+
+### Docker Usage (Recommended)
+
+#### Basic Usage - Generate 3 clips with default output types:
+```bash
+docker run --rm -it \
+  --env-file .env \
+  -v "$(pwd)/output:/app/output" \
+  ai-youtube-shorts-generator:cpu \
+  python3 main.py "https://www.youtube.com/watch?v=FeirRhBRc5w"
+```
+
+#### Generate 5 clips with all output variations:
+```bash
+docker run --rm -it \
+  --env-file .env \
+  -v "$(pwd)/output:/app/output" \
+  ai-youtube-shorts-generator:cpu \
+  python3 main.py --clips 5 --output-types original subtitled original-subtitled "https://youtu.be/VIDEO_ID"
+```
+
+#### Generate only original cuts (no subtitles):
+```bash
+docker run --rm -it \
+  --env-file .env \
+  -v "$(pwd)/output:/app/output" \
+  ai-youtube-shorts-generator:cpu \
+  python3 main.py --clips 3 --output-types original "https://youtu.be/VIDEO_ID"
+```
+
+#### Batch processing with auto-approve:
+```bash
+docker run --rm -it \
+  --env-file .env \
+  -v "$(pwd)/output:/app/output" \
+  ai-youtube-shorts-generator:cpu \
+  python3 main.py --auto-approve --clips 5 "https://youtu.be/VIDEO_ID"
+```
+
+#### Interactive Mode (Enter URL when prompted):
+```bash
+docker run --rm -it \
+  --env-file .env \
+  -v "$(pwd)/output:/app/output" \
+  ai-youtube-shorts-generator:cpu
+```
+
+#### Process local video files:
+```bash
+# Mount your video directory and process local file
+docker run --rm -it \
+  --env-file .env \
+  -v "$(pwd)/output:/app/output" \
+  -v "$(pwd)/videos:/app/videos" \
+  ai-youtube-shorts-generator:cpu \
+  python3 main.py --clips 3 "/app/videos/your-video.mp4"
+```
+
+#### Batch process multiple URLs:
+```bash
+# Create urls.txt with one URL per line, then process all
+docker run --rm -it \
+  --env-file .env \
+  -v "$(pwd)/output:/app/output" \
+  -v "$(pwd)/urls.txt:/app/urls.txt" \
+  ai-youtube-shorts-generator:cpu \
+  bash -c "xargs -a urls.txt -I{} python3 main.py --auto-approve --clips 3 {}"
+```
+
+### Native Python Usage
+
+#### Multiple clips with custom output types:
+```bash
+./run.sh --clips 5 --output-types original subtitled "https://youtu.be/VIDEO_ID"
+```
+
+#### With Local Video File:
+```bash
+./run.sh --clips 3 "/path/to/your/video.mp4"
+```
+
+#### Batch Processing Multiple URLs:
 Create a `urls.txt` file with one URL per line, then:
 
 ```bash
-# Process all URLs sequentially with auto-approve
-xargs -a urls.txt -I{} ./run.sh --auto-approve {}
+# Process all URLs with 3 clips each, auto-approve
+xargs -a urls.txt -I{} ./run.sh --auto-approve --clips 3 {}
 ```
 
-Or without auto-approve (will prompt for each):
-```bash
-xargs -a urls.txt -I{} ./run.sh {}
+### Output Types Explained
+
+- **`original`**: Cropped to 9:16 aspect ratio, no subtitles
+- **`original-dimension`**: Preserves original video dimensions (e.g., 16:9), no subtitles
+- **`subtitled`**: Cropped to 9:16 aspect ratio, with burned-in subtitles  
+- **`original-subtitled`**: Original aspect ratio, with burned-in subtitles
+
+**Default output types**: `original`, `original-dimension`, `subtitled` (3 files per clip)
+
+### File Naming
+
+Generated files follow this pattern:
+```
+{video_title}_clip1_{session_id}_original.mp4
+{video_title}_clip1_{session_id}_subtitled.mp4
+{video_title}_clip2_{session_id}_original.mp4
+...
 ```
 
 ## Resolution Selection
@@ -159,11 +347,27 @@ Auto-approving in 15 seconds if no input...
 ## Configuration
 
 ### Subtitle Styling
-Edit `Components/Subtitles.py`:
-- **Font**: Line 51 (`font='Franklin-Gothic'`)
-- **Size**: Line 47 (`fontsize=80`)
-- **Color**: Line 48 (`color='#2699ff'`)
-- **Outline**: Lines 49-50 (`stroke_color='black'`, `stroke_width=2`)
+Configure in your `.env` file:
+- **Font**: `SUBTITLE_FONT=Franklin-Gothic` (any system font)
+- **Size Ratio**: `SUBTITLE_SIZE_RATIO=0.065` (percentage of video height)
+- **Color**: `SUBTITLE_COLOR=#2699ff` (hex color code)
+- **Stroke Color**: `SUBTITLE_STROKE_COLOR=black` (outline color)
+- **Stroke Width**: `SUBTITLE_STROKE_WIDTH=2` (outline thickness in pixels)
+
+Examples:
+```bash
+# Large yellow subtitles with red outline
+SUBTITLE_FONT=Arial
+SUBTITLE_SIZE_RATIO=0.08
+SUBTITLE_COLOR=#ffff00
+SUBTITLE_STROKE_COLOR=#ff0000
+SUBTITLE_STROKE_WIDTH=3
+
+# Small white subtitles with no outline
+SUBTITLE_COLOR=#ffffff
+SUBTITLE_SIZE_RATIO=0.05
+SUBTITLE_STROKE_WIDTH=0
+```
 
 ### Highlight Selection Criteria
 Edit `Components/LanguageTasks.py`:

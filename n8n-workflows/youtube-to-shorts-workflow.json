@@ -1,0 +1,242 @@
+{
+  "name": "Zuke Video Shorts Creator - YouTube to Shorts",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "video-shorts-webhook",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "video-shorts-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://your-azure-app.azurecontainerapps.io/webhook/n8n",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.ZUKE_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "youtube_url",
+              "value": "={{ $json.youtube_url }}"
+            },
+            {
+              "name": "num_clips",
+              "value": "={{ $json.num_clips || 3 }}"
+            },
+            {
+              "name": "output_types",
+              "value": "={{ $json.output_types || ['subtitled'] }}"
+            },
+            {
+              "name": "auto_approve",
+              "value": "={{ $json.auto_approve || false }}"
+            },
+            {
+              "name": "webhook_url",
+              "value": "={{ $webhookUrl }}/results"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Send to Zuke API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"job_id\": $json.job_id,\n  \"status\": $json.status,\n  \"message\": \"Video processing started successfully\"\n} }}"
+      },
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "path": "results",
+        "options": {}
+      },
+      "name": "Results Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 500],
+      "webhookId": "results-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "value2": "completed"
+            }
+          ]
+        }
+      },
+      "name": "If Completed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 500]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "url": "={{ $json.output_urls[0] }}",
+        "options": {}
+      },
+      "name": "Download Videos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "resource": "file",
+        "binaryPropertyName": "data",
+        "additionalFields": {
+          "fileName": "={{ $json.job_id }}_clip_{{ $index }}.mp4"
+        }
+      },
+      "name": "Upload to Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "channel": "C12345678",
+        "text": "🎬 New video shorts generated!\n\nJob ID: {{ $json.job_id }}\nClips created: {{ $json.output_urls.length }}\n\nStatus: ✅ Completed",
+        "attachments": []
+      },
+      "name": "Notify Slack - Success",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [850, 500]
+    },
+    {
+      "parameters": {
+        "channel": "C12345678",
+        "text": "❌ Video processing failed\n\nJob ID: {{ $json.job_id }}\nError: {{ $json.error_message }}",
+        "attachments": []
+      },
+      "name": "Notify Slack - Error",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [850, 600]
+    },
+    {
+      "parameters": {
+        "subject": "Video Shorts Generated - {{ $json.job_id }}",
+        "toEmail": "recipient@example.com",
+        "text": "Your video shorts have been generated successfully!\n\nJob ID: {{ $json.job_id }}\nNumber of clips: {{ $json.output_urls.length }}\n\nYou can download them from the links below:\n{{ $json.output_urls.join('\\n') }}",
+        "options": {}
+      },
+      "name": "Send Email Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1050, 500]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Send to Zuke API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Zuke API": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Results Webhook": {
+      "main": [
+        [
+          {
+            "node": "If Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Completed": {
+      "main": [
+        [
+          {
+            "node": "Download Videos",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Slack - Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Slack - Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Videos": {
+      "main": [
+        [
+          {
+            "node": "Upload to Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Slack - Success": {
+      "main": [
+        [
+          {
+            "node": "Send Email Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1"
+}
