@@ -47,5 +47,8 @@ ENV LD_LIBRARY_PATH=/usr/local/lib/python3.10/dist-packages/nvidia/cudnn/lib:/us
 # Make run.sh executable
 RUN chmod +x run.sh
 
+# Expose port for processor API
+EXPOSE 8001
+
 # Default command (can be overridden)
-CMD ["./run.sh"]
+CMD ["python", "processor_server.py"]

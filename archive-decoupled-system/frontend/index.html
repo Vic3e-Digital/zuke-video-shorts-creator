@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zuke Video Shorts Creator</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        .checkbox-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status-card {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #e1e5e9;
+        }
+        .status-processing {
+            border-color: #ffc107;
+            background: #fff8e1;
+        }
+        .status-completed {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+        .status-failed {
+            border-color: #dc3545;
+            background: #fff8f8;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e1e5e9;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #007bff;
+            transition: width 0.3s;
+        }
+        .output-files {
+            margin-top: 20px;
+        }
+        .clip-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .file-link {
+            display: inline-block;
+            margin: 5px 10px 5px 0;
+            padding: 6px 12px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .file-link:hover {
+            background: #0056b3;
+        }
+        .architecture-info {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="container">
+        <div class="header">
+            <h1>🎬 Zuke Video Shorts Creator</h1>
+            <p>Transform long videos into viral shorts with AI</p>
+        </div>
+
+        <form @submit.prevent="processVideo" v-if="!currentJob">
+            <div class="form-group">
+                <label for="youtube-url">YouTube Video URL</label>
+                <input 
+                    id="youtube-url"
+                    type="url" 
+                    v-model="form.youtube_url"
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="num-clips">Number of Clips</label>
+                <select id="num-clips" v-model="form.num_clips">
+                    <option value="1">1 Clip</option>
+                    <option value="2">2 Clips</option>
+                    <option value="3">3 Clips</option>
+                    <option value="4">4 Clips</option>
+                    <option value="5">5 Clips</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Output Types</label>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="original" v-model="form.output_types" value="original">
+                        <label for="original">Original (Vertical crop)</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="subtitled" v-model="form.output_types" value="subtitled">
+                        <label for="subtitled">Subtitled (With captions)</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="original-dimension" v-model="form.output_types" value="original-dimension">
+                        <label for="original-dimension">Original Dimension</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="original-subtitled" v-model="form.output_types" value="original-subtitled">
+                        <label for="original-subtitled">Original + Subtitled</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" id="auto-approve" v-model="form.auto_approve">
+                    <label for="auto-approve">Auto-approve selections (Skip manual review)</label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn" :disabled="processing">
+                {{ processing ? 'Processing...' : 'Generate Shorts' }}
+            </button>
+        </form>
+
+        <!-- Status Display -->
+        <div v-if="currentJob" class="status-card" :class="{
+            'status-processing': currentJob.status === 'processing' || currentJob.status === 'pending',
+            'status-completed': currentJob.status === 'completed',
+            'status-failed': currentJob.status === 'failed'
+        }">
+            <h3>Job Status: {{ currentJob.status.toUpperCase() }}</h3>
+            <p><strong>Job ID:</strong> {{ currentJob.job_id }}</p>
+            <p><strong>Message:</strong> {{ currentJob.message }}</p>
+            
+            <div class="progress-bar" v-if="currentJob.status === 'processing' || currentJob.status === 'pending'">
+                <div class="progress-fill" :style="{width: currentJob.progress + '%'}"></div>
+            </div>
+            <p v-if="currentJob.status === 'processing' || currentJob.status === 'pending'">
+                Progress: {{ currentJob.progress }}%
+            </p>
+
+            <div v-if="currentJob.error_message" style="color: #dc3545;">
+                <strong>Error:</strong> {{ currentJob.error_message }}
+            </div>
+
+            <!-- Output Files -->
+            <div v-if="currentJob.output_files && currentJob.output_files.length > 0" class="output-files">
+                <h4>Generated Clips:</h4>
+                <div v-for="clip in currentJob.output_files" :key="clip.clip_number" class="clip-item">
+                    <h5>Clip {{ clip.clip_number }} ({{ clip.start_time }}s - {{ clip.end_time }}s)</h5>
+                    <p v-if="clip.content">{{ clip.content.substring(0, 150) }}...</p>
+                    <div>
+                        <a v-for="file in clip.files" :key="file.path" 
+                           :href="file.url" 
+                           class="file-link"
+                           :download="file.filename">
+                            {{ file.filename }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <button v-if="currentJob.status !== 'processing' && currentJob.status !== 'pending'" 
+                    @click="resetForm" class="btn" style="margin-top: 15px;">
+                Process Another Video
+            </button>
+        </div>
+
+        <!-- Architecture Information -->
+        <div class="architecture-info">
+            <h4>🏗️ Decoupled Architecture</h4>
+            <p><strong>Current Flow:</strong> Frontend → API Gateway (Port 8000) → Video Processor (Port 8001)</p>
+            <p><strong>With n8n:</strong> Frontend → n8n Workflow → API Gateway → Video Processor → Response to n8n → Webhook</p>
+            <p>This architecture allows easy integration with automation workflows and debugging through n8n's visual interface.</p>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    processing: false,
+                    currentJob: null,
+                    pollInterval: null,
+                    form: {
+                        youtube_url: '',
+                        num_clips: 3,
+                        output_types: ['subtitled'],
+                        auto_approve: true
+                    },
+                    // Configuration
+                    apiBaseUrl: 'http://localhost:8000'
+                }
+            },
+            methods: {
+                async processVideo() {
+                    if (!this.form.youtube_url) {
+                        alert('Please enter a YouTube URL');
+                        return;
+                    }
+
+                    if (this.form.output_types.length === 0) {
+                        alert('Please select at least one output type');
+                        return;
+                    }
+
+                    this.processing = true;
+
+                    try {
+                        const response = await axios.post(`${this.apiBaseUrl}/process`, {
+                            youtube_url: this.form.youtube_url,
+                            num_clips: parseInt(this.form.num_clips),
+                            output_types: this.form.output_types,
+                            auto_approve: this.form.auto_approve
+                        });
+
+                        this.currentJob = {
+                            job_id: response.data.job_id,
+                            status: 'pending',
+                            progress: 0,
+                            message: 'Job queued for processing',
+                            output_files: []
+                        };
+
+                        // Start polling for status
+                        this.startPolling();
+
+                    } catch (error) {
+                        console.error('Error processing video:', error);
+                        alert('Error starting video processing: ' + (error.response?.data?.detail || error.message));
+                    } finally {
+                        this.processing = false;
+                    }
+                },
+
+                async checkStatus() {
+                    if (!this.currentJob) return;
+
+                    try {
+                        const response = await axios.get(`${this.apiBaseUrl}/status/${this.currentJob.job_id}`);
+                        this.currentJob = { ...this.currentJob, ...response.data };
+
+                        // Stop polling if job is complete
+                        if (this.currentJob.status === 'completed' || this.currentJob.status === 'failed') {
+                            this.stopPolling();
+                        }
+                    } catch (error) {
+                        console.error('Error checking status:', error);
+                    }
+                },
+
+                startPolling() {
+                    this.pollInterval = setInterval(() => {
+                        this.checkStatus();
+                    }, 2000); // Poll every 2 seconds
+                },
+
+                stopPolling() {
+                    if (this.pollInterval) {
+                        clearInterval(this.pollInterval);
+                        this.pollInterval = null;
+                    }
+                },
+
+                resetForm() {
+                    this.currentJob = null;
+                    this.form = {
+                        youtube_url: '',
+                        num_clips: 3,
+                        output_types: ['subtitled'],
+                        auto_approve: true
+                    };
+                }
+            },
+
+            beforeUnmount() {
+                this.stopPolling();
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

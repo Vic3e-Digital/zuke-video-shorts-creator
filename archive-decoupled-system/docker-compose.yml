@@ -1,0 +1,60 @@
+services:
+  # Standalone Python Video Processor
+  video-processor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: zuke-video-processor:gpu
+    container_name: zuke-video-processor-gpu
+    
+    # Enable GPU support
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    
+    # Environment variables
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - PROCESSOR_MODE=api
+      - PROCESSOR_PORT=8001
+    
+    env_file:
+      - .env
+    
+    # Mount volumes for input/output
+    volumes:
+      - ./videos:/app/videos
+      - ./output:/app/output
+    
+    ports:
+      - "8001:8001"  # Processor API port
+    
+    command: python processor_server.py
+  
+  # API Gateway (Frontend Interface)
+  api-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: zuke-api-server:latest
+    container_name: zuke-api-server
+    
+    env_file:
+      - .env
+    
+    environment:
+      - PROCESSOR_URL=http://video-processor:8001
+      - API_PORT=8000
+    
+    ports:
+      - "8000:8000"  # API server port
+    
+    depends_on:
+      - video-processor
+    
+    command: python api/main.py

@@ -1,0 +1,23 @@
+# Lightweight API Server Dockerfile
+FROM python:3.10-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Set working directory
+WORKDIR /app
+
+# Install only API dependencies
+COPY api/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy API server code
+COPY api/ ./api/
+COPY .env.example .env
+
+# Expose API port
+EXPOSE 8000
+
+# Run API server
+CMD ["python", "api/main.py"]

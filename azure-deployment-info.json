@@ -1,0 +1,11 @@
+{
+  "PublicURL": "http://",
+  "ContainerRegistry": "zukevideoacr9358.azurecr.io",
+  "APIEndpoint": "http:///process",
+  "StorageContainer": "video-content",
+  "StorageAccount": "zukestorage3833",
+  "VideoStorageURL": "https://zukestorage3833.blob.core.windows.net/video-content/",
+  "HealthCheck": "http:///",
+  "ResourceGroup": "zuke-video-shorts-rg",
+  "ContainerName": "zuke-video-processor"
+}
