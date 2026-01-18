@@ -221,7 +221,12 @@ async def process_video(request: VideoProcessingRequest):
         print(f"\n{'='*50}", flush=True)
         print(f"=== SUBPROCESS OUTPUT ===", flush=True)
         print(f"{'='*50}", flush=True)
-        print(f"STDOUPath("/app/output")
+        print(f"STDOUT:\n{result.stdout}", flush=True)
+        print(f"STDERR:\n{result.stderr}", flush=True)
+        
+        # Check for output files
+        output_files = []
+        output_dir = Path("/app/output")
         
         if output_dir.exists():
             # Initialize Azure Blob Storage if available
@@ -280,23 +285,25 @@ async def process_video(request: VideoProcessingRequest):
                 processing_time=processing_time,
                 output_files=[],
                 error_message=error_details
-            
-                        "filename": filename,
-                        "size": file_size,
-                        "url": file_url,
-                        "type": "video/mp4",
-                        "created_at": datetime.utcnow().isoformat(),
-                        "storage": "azure_blob" if storage_manager else "local"
-                    })
+            )
         
         # Calculate processing time
+        processing_time = time.time() - start_time
+        return VideoProcessingResponse(
+            success=True,
+            job_id=request.job_id,
+            message="Video processing completed successfully",
+            processing_time=processing_time,
+            output_files=output_files
+        )
+    except subprocess.TimeoutExpired:
         processing_time = time.time() - start_time
         return VideoProcessingResponse(
             success=False,
             job_id=request.job_id,
             message="Processing timed out after 30 minutes",
             processing_time=processing_time,
-            error_message="Timeout"
+            error_message="Video processing took longer than 30 minutes"
         )
     except Exception as e:
         processing_time = time.time() - start_time
@@ -304,18 +311,7 @@ async def process_video(request: VideoProcessingRequest):
         return VideoProcessingResponse(
             success=False,
             job_id=request.job_id,
-            message=f"Processing failed: {str(e)}
-            job_id=request.job_id,
-            message="Processing timed out",
-            processing_time=1800,
-            error_message="Video processing took longer than 30 minutes"
-        )
-    except Exception as e:
-        processing_time = (datetime.utcnow() - start_time).total_seconds()
-        return VideoProcessingResponse(
-            success=False,
-            job_id=request.job_id,
-            message="Processing failed",
+            message=f"Processing failed: {str(e)}",
             processing_time=processing_time,
             error_message=str(e)
         )
