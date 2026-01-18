@@ -145,10 +145,10 @@ if Vid:
             
             # Get multiple highlights if more than 1 clip requested
             if num_clips > 1:
-                highlights = GetMultipleHighlights(TransText, num_clips)
+                highlights = GetMultipleHighlights(TransText, num_clips, auto_approve)
             else:
                 # Use single highlight function for backwards compatibility
-                start, stop = GetHighlight(TransText)
+                start, stop = GetHighlight(TransText, auto_approve)
                 if start is not None and stop is not None:
                     highlights = [{'start': start, 'end': stop, 'content': 'Single highlight'}]
                 else:
@@ -202,9 +202,9 @@ if Vid:
                             if user_input == 'r':
                                 print("\nRegenerating selections...")
                                 if num_clips > 1:
-                                    highlights = GetMultipleHighlights(TransText, num_clips)
+                                    highlights = GetMultipleHighlights(TransText, num_clips, auto_approve)
                                 else:
-                                    start, stop = GetHighlight(TransText)
+                                    start, stop = GetHighlight(TransText, auto_approve)
                                     if start is not None and stop is not None:
                                         highlights = [{'start': start, 'end': stop, 'content': 'Single highlight'}]
                                     else:

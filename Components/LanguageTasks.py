@@ -87,7 +87,7 @@ Return a JSON object with the following structure:
 
 
 
-def GetMultipleHighlights(Transcription, num_clips=3):
+def GetMultipleHighlights(Transcription, num_clips=3, auto_approve=False):
     """
     Get multiple highlights from transcription
     """
@@ -171,7 +171,7 @@ def GetMultipleHighlights(Transcription, num_clips=3):
         return []
 
 
-def GetHighlight(Transcription):
+def GetHighlight(Transcription, auto_approve=False):
     from langchain_openai import AzureChatOpenAI
     
     try:
@@ -231,10 +231,14 @@ def GetHighlight(Transcription):
         print(f"{'='*60}\n")
         
         if Start==End:
-            Ask = input("Error - Get Highlights again (y/n) -> ").lower()
-            if Ask == "y":
-                Start, End = GetHighlight(Transcription)
-            return Start, End
+            if not auto_approve:
+                Ask = input("Error - Get Highlights again (y/n) -> ").lower()
+                if Ask == "y":
+                    Start, End = GetHighlight(Transcription, auto_approve)
+                return Start, End
+            else:
+                print("⚠️ Start==End error in auto-approve mode, skipping retry")
+                return None, None
         return Start,End
         
     except Exception as e:
