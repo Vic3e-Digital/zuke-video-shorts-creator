@@ -70,15 +70,31 @@ RUN pip3 install --no-cache-dir --upgrade pip && \
 # Copy application code
 COPY . .
 
+# Copy YouTube cookies if available (for authenticated downloads)
+# This will silently fail if the file doesn't exist (which is fine)
+COPY youtube_cookies.txt* /app/
+
 # Create output directories
 RUN mkdir -p /app/output /app/videos /app/temp
 
 # Expose port for Azure Container Instances
 EXPOSE 8000
 
+# Create startup script that downloads cookies and starts API
+RUN echo '#!/bin/bash\n\
+echo "Downloading YouTube cookies from Azure Blob Storage..."\n\
+curl -f -o /app/youtube_cookies.txt "https://zukestorage3833.blob.core.windows.net/config/youtube_cookies.txt" || echo "Warning: Could not download cookies"\n\
+if [ -f /app/youtube_cookies.txt ]; then\n\
+    echo "✓ Cookies downloaded successfully ($(wc -c < /app/youtube_cookies.txt) bytes)"\n\
+else\n\
+    echo "⚠️  No cookies file - YouTube downloads may be blocked"\n\
+fi\n\
+echo "Starting API server..."\n\
+exec python3 azure_api.py' > /app/start.sh && chmod +x /app/start.sh
+
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8000/ || exit 1
 
 # Start the Azure API server
-CMD ["python3", "azure_api.py"]
+CMD ["/app/start.sh"]
