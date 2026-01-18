@@ -15,11 +15,22 @@ def download_youtube_video(url):
         if not os.path.exists('videos'):
             os.makedirs('videos')
         
+        # Check if cookies file exists
+        cookies_file = os.path.join(os.getcwd(), 'youtube_cookies.txt')
+        use_cookies = os.path.exists(cookies_file)
+        
+        if use_cookies:
+            print(f"✓ Using cookies from: {cookies_file}")
+        else:
+            print("⚠️  No cookies file found. YouTube may block requests.")
+            print("   To fix: Place 'youtube_cookies.txt' in the app directory")
+        
         # First, get video info to show available formats
         print("Fetching video information...")
         ydl_opts_info = {
             'quiet': True,
             'no_warnings': True,
+            'cookiefile': cookies_file if use_cookies else None,
             'extractor_args': {
                 'youtube': {
                     'player_client': ['ios', 'android', 'web'],
@@ -112,6 +123,7 @@ def download_youtube_video(url):
             'format': selected_format,
             'outtmpl': output_template,
             'merge_output_format': 'mp4',
+            'cookiefile': cookies_file if use_cookies else None,
             'extractor_args': {
                 'youtube': {
                     'player_client': ['ios', 'android', 'web'],
