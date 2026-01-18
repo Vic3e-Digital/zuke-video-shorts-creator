@@ -70,9 +70,6 @@ RUN pip3 install --no-cache-dir --upgrade pip && \
 # Copy application code
 COPY . .
 
-# Copy YouTube cookies if they exist (will fail silently if not present)
-COPY youtube_cookies.tx[t] /app/ || true
-
 # Create output directories
 RUN mkdir -p /app/output /app/videos /app/temp
 
