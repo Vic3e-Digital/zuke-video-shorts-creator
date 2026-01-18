@@ -20,9 +20,15 @@ def download_youtube_video(url):
         ydl_opts_info = {
             'quiet': True,
             'no_warnings': True,
-            'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['ios', 'android', 'web'],
+                    'skip': ['hls', 'dash']
+                }
+            },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                'User-Agent': 'com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)',
+                'Accept-Language': 'en-US,en;q=0.9'
             }
         }
         
@@ -106,9 +112,15 @@ def download_youtube_video(url):
             'format': selected_format,
             'outtmpl': output_template,
             'merge_output_format': 'mp4',
-            'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['ios', 'android', 'web'],
+                    'skip': ['hls', 'dash']
+                }
+            },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                'User-Agent': 'com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)',
+                'Accept-Language': 'en-US,en;q=0.9'
             },
             'postprocessors': [{
                 'key': 'FFmpegVideoConvertor',
