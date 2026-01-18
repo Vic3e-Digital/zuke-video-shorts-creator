@@ -41,7 +41,7 @@ temp/
 tmp/
 
 # Models (large binary files)
-models/
+# models/
 
 # IDE
 .vscode/
@@ -109,3 +109,8 @@ secrets/
 credentials/
 *.pem
 *.key
+# Azure deployment (auto-added)
+.azure-deployment-config.json
+
+# Azure deployment (auto-added)
+azure-deployment-info.json

@@ -1,11 +1,20 @@
 {
-  "PublicURL": "http://",
-  "ContainerRegistry": "zukevideoacr9358.azurecr.io",
-  "APIEndpoint": "http:///process",
-  "StorageContainer": "video-content",
   "StorageAccount": "zukestorage3833",
+  "PublicIP": "20.241.209.140",
+  "GitHubRepo": "https://github.com/Vic3e-Digital/zuke-video-shorts-creator.git",
+  "GitHubBranch": "main",
+  "PublicURL": "http://zuke-video-8366.eastus.azurecontainer.io:8000",
   "VideoStorageURL": "https://zukestorage3833.blob.core.windows.net/video-content/",
-  "HealthCheck": "http:///",
   "ResourceGroup": "zuke-video-shorts-rg",
-  "ContainerName": "zuke-video-processor"
+  "HealthCheck": "http://zuke-video-8366.eastus.azurecontainer.io:8000/",
+  "FQDN": "zuke-video-8366.eastus.azurecontainer.io",
+  "ContainerName": "zuke-video-processor",
+  "Location": "East US",
+  "DeployedAt": "2026-01-18T19:09:59.9525520+02:00",
+  "APIEndpoint": "http://zuke-video-8366.eastus.azurecontainer.io:8000/process",
+  "AcrServer": "zukevideoacr4089.azurecr.io",
+  "AcrName": "zukevideoacr4089",
+  "PrivateStorage": false,
+  "BuildSource": "GitHub",
+  "StorageContainer": "video-content"
 }
