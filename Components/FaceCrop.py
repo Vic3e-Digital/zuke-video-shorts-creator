@@ -170,21 +170,57 @@ def crop_to_vertical(input_video_path, output_video_path):
 
 
 def combine_videos(video_with_audio, video_without_audio, output_filename):
+    """Combine video (without audio) with audio from another video.
+    Includes proper cleanup to prevent memory leaks."""
+    clip_with_audio = None
+    clip_without_audio = None
+    combined_clip = None
+    audio = None
+    
     try:
         # Load video clips
         clip_with_audio = VideoFileClip(video_with_audio)
         clip_without_audio = VideoFileClip(video_without_audio)
 
+        # Extract audio
         audio = clip_with_audio.audio
 
+        # Combine video with audio
         combined_clip = clip_without_audio.set_audio(audio)
 
         global Fps
-        combined_clip.write_videofile(output_filename, codec='libx264', audio_codec='aac', fps=Fps, preset='medium', bitrate='3000k')
+        # Write output with error handling
+        combined_clip.write_videofile(
+            output_filename, 
+            codec='libx264', 
+            audio_codec='aac', 
+            fps=Fps, 
+            preset='medium', 
+            bitrate='3000k',
+            threads=2,  # Limit threads to reduce memory usage
+            logger=None  # Reduce console output
+        )
         print(f"Combined video saved successfully as {output_filename}")
     
     except Exception as e:
         print(f"Error combining video and audio: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise  # Re-raise to let caller handle
+        
+    finally:
+        # Critical: Close all clips to free memory
+        try:
+            if combined_clip:
+                combined_clip.close()
+            if audio:
+                del audio
+            if clip_without_audio:
+                clip_without_audio.close()
+            if clip_with_audio:
+                clip_with_audio.close()
+        except Exception as cleanup_error:
+            print(f"Warning: Error during cleanup: {cleanup_error}")
 
 
 

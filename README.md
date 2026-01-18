@@ -414,6 +414,18 @@ Each instance gets a unique session ID and temporary files, preventing conflicts
 
 ## Troubleshooting
 
+### 🤖 YouTube Bot Detection Error
+If you see "Sign in to confirm you're not a bot", your cookies are expired:
+
+```bash
+# Quick fix (3 steps):
+1. Export fresh cookies from browser (see YOUTUBE-BOT-FIX.md)
+2. Validate: ./validate-cookies.sh
+3. Upload to Azure: ./upload-cookies-to-azure.sh && ./deploy-to-azure.ps1
+```
+
+**📖 Full guide**: [YOUTUBE-BOT-FIX.md](YOUTUBE-BOT-FIX.md)
+
 ### CUDA/GPU Issues
 ```bash
 # Verify CUDA libraries

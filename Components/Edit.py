@@ -15,7 +15,13 @@ def extractAudio(video_path, audio_path="audio.wav"):
 
 
 def crop_video(input_file, output_file, start_time, end_time):
-    with VideoFileClip(input_file) as video:
+    """Crop video to specified time range with proper resource management."""
+    video = None
+    cropped_video = None
+    
+    try:
+        video = VideoFileClip(input_file)
+        
         # Ensure end_time doesn't exceed video duration
         max_time = video.duration - 0.1  # Small buffer to avoid edge cases
         if end_time > max_time:
@@ -23,7 +29,29 @@ def crop_video(input_file, output_file, start_time, end_time):
             end_time = max_time
         
         cropped_video = video.subclip(start_time, end_time)
-        cropped_video.write_videofile(output_file, codec='libx264', audio_codec='aac')
+        cropped_video.write_videofile(
+            output_file, 
+            codec='libx264', 
+            audio_codec='aac',
+            threads=2,
+            logger=None
+        )
+        
+    except Exception as e:
+        print(f"❌ Error cropping video: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
+        
+    finally:
+        # Clean up resources
+        try:
+            if cropped_video:
+                cropped_video.close()
+            if video:
+                video.close()
+        except Exception as cleanup_error:
+            print(f"Warning: Error during crop cleanup: {cleanup_error}")
 
 # Example usage:
 if __name__ == "__main__":

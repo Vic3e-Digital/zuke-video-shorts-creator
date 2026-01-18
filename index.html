@@ -75,7 +75,6 @@
             border-radius: 8px;
             padding: 20px 24px;
             margin-bottom: 20px;
-            border-left: 4px solid var(--primary-orange);
             border: 1px solid var(--border-color);
             border-left: 4px solid var(--primary-orange);
         }
@@ -255,6 +254,196 @@
             gap: 16px;
         }
 
+        /* ========== UPLOAD BOX ========== */
+        .upload-box {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            background: var(--light-bg);
+            transition: all 0.2s;
+        }
+
+        .upload-box:hover {
+            border-color: var(--primary-orange);
+            background: #FFF8F0;
+        }
+
+        .upload-box.dragover {
+            border-color: var(--primary-orange);
+            background: #FFF8F0;
+            transform: scale(1.01);
+        }
+
+        .upload-box.has-file {
+            padding: 16px;
+            border-style: solid;
+            border-color: var(--success-border);
+            background: var(--success-bg);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: #ccc;
+            margin-bottom: 12px;
+        }
+
+        .upload-box:hover .upload-icon {
+            color: var(--primary-orange);
+        }
+
+        .upload-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .upload-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .upload-browse-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, var(--primary-orange), var(--alt-orange));
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .upload-browse-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 139, 0, 0.3);
+        }
+
+        .upload-formats {
+            margin-top: 12px;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* File Preview */
+        .file-preview {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            text-align: left;
+        }
+
+        .file-icon {
+            width: 56px;
+            height: 56px;
+            background: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: var(--primary-orange);
+            border: 1px solid var(--border-color);
+        }
+
+        .file-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--dark-neutral);
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 12px;
+        }
+
+        .file-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .remove-file-btn {
+            padding: 8px 14px;
+            background: var(--error-bg);
+            color: var(--error-text);
+            border: 1px solid var(--error-border);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .remove-file-btn:hover {
+            background: var(--error-border);
+            color: white;
+        }
+
+        /* Hidden file input */
+        .file-input-hidden {
+            display: none;
+        }
+
+        /* ========== LOCAL FILE MODE TOGGLE ========== */
+        .local-mode-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .local-mode-btn {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-family: inherit;
+        }
+
+        .local-mode-btn:hover {
+            border-color: var(--primary-orange);
+        }
+
+        .local-mode-btn.active {
+            border-color: var(--primary-orange);
+            background: #FFF8F0;
+            color: var(--primary-orange);
+        }
+
+        .local-mode-btn i {
+            font-size: 14px;
+        }
+
         /* ========== CHECKBOX GROUP ========== */
         .checkbox-group {
             display: flex;
@@ -420,7 +609,8 @@
             border: 1px solid var(--error-border); 
         }
 
-        .status.loading { 
+        .status.loading,
+        .status.processing { 
             background: var(--info-bg); 
             color: var(--info-text); 
             border: 1px solid var(--info-border); 
@@ -532,6 +722,41 @@
             flex-shrink: 0;
         }
 
+        /* Video Preview */
+        .video-preview-container {
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .video-preview-player {
+            width: 100%;
+            max-height: 300px;
+            display: block;
+        }
+
+        .video-preview-info {
+            padding: 12px;
+            background: var(--dark-neutral);
+            color: white;
+        }
+
+        .video-preview-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .video-preview-meta {
+            font-size: 12px;
+            opacity: 0.8;
+            display: flex;
+            gap: 12px;
+        }
+
         /* ========== COST SUMMARY ========== */
         .cost-summary {
             background: #FFF8F0;
@@ -628,6 +853,109 @@
             line-height: 1.3;
         }
 
+        /* ========== RESULTS SECTION ========== */
+        .result-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .result-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            gap: 12px;
+        }
+
+        .result-card-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .result-card-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--dark-neutral);
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .result-card-title i {
+            color: var(--primary-orange);
+        }
+
+        .result-card-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .result-card-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .result-download-btn {
+            padding: 8px 16px;
+            background: var(--primary-orange);
+            color: white;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .result-download-btn:hover {
+            background: var(--alt-orange);
+            transform: translateY(-1px);
+        }
+
+        .result-copy-btn {
+            padding: 8px 12px;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .result-copy-btn:hover {
+            border-color: var(--primary-orange);
+            background: #FFF8F0;
+        }
+
+        .result-url-input {
+            margin-top: 8px;
+            width: 100%;
+            padding: 8px;
+            font-size: 12px;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-secondary);
+        }
+
+        .result-summary {
+            background: var(--success-bg);
+            border: 1px solid var(--success-border);
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 13px;
+            color: var(--success-text);
+        }
+
+        .result-summary i {
+            margin-right: 6px;
+        }
+
         /* ========== RESPONSIVE ========== */
         @media (max-width: 900px) {
             .video-container {
@@ -670,6 +998,27 @@
             .preview-placeholder {
                 min-height: 200px;
                 padding: 24px 16px;
+            }
+
+            .upload-box {
+                padding: 20px;
+            }
+
+            .file-preview {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .file-info {
+                text-align: center;
+            }
+
+            .file-meta {
+                justify-content: center;
+            }
+
+            .local-mode-toggle {
+                flex-direction: column;
             }
         }
 
@@ -778,12 +1127,13 @@
                                         v-model="inputType"
                                     >
                                     <span class="input-type-label">
-                                        <i class="fas fa-folder-open"></i>
-                                        Local File
+                                        <i class="fas fa-upload"></i>
+                                        Upload File
                                     </span>
                                 </label>
                             </div>
 
+                            <!-- YouTube URL Input -->
                             <div class="form-group" v-if="inputType === 'youtube'">
                                 <label for="youtubeUrl">YouTube Video URL <span style="color: var(--primary-orange);">*</span></label>
                                 <input 
@@ -798,17 +1148,100 @@
                                 </div>
                             </div>
 
-                            <div class="form-group" v-if="inputType === 'local'">
-                                <label for="filePath">Local Video File Path <span style="color: var(--primary-orange);">*</span></label>
-                                <input 
-                                    type="text" 
-                                    id="filePath"
-                                    v-model="filePath" 
-                                    placeholder="/path/to/your/video.mp4"
-                                    :required="inputType === 'local'"
-                                >
-                                <div class="field-note">
-                                    Full path to your local video file (mp4, mov, avi formats supported)
+                            <!-- Local File Upload -->
+                            <div v-if="inputType === 'local'">
+                                <!-- Mode Toggle: Upload vs Path -->
+                                <div class="local-mode-toggle">
+                                    <button 
+                                        type="button"
+                                        class="local-mode-btn"
+                                        :class="{ active: localMode === 'upload' }"
+                                        @click="localMode = 'upload'"
+                                    >
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        Upload File
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        class="local-mode-btn"
+                                        :class="{ active: localMode === 'path' }"
+                                        @click="localMode = 'path'"
+                                    >
+                                        <i class="fas fa-folder-open"></i>
+                                        Server Path
+                                    </button>
+                                </div>
+
+                                <!-- File Upload Box -->
+                                <div v-if="localMode === 'upload'" class="form-group">
+                                    <div 
+                                        class="upload-box"
+                                        :class="{ 'has-file': selectedFile, 'dragover': isDragOver }"
+                                        @click="triggerFileInput"
+                                        @dragover.prevent="handleDragOver"
+                                        @dragleave.prevent="handleDragLeave"
+                                        @drop.prevent="handleDrop"
+                                    >
+                                        <!-- No file selected -->
+                                        <template v-if="!selectedFile">
+                                            <div class="upload-icon">
+                                                <i class="fas fa-cloud-upload-alt"></i>
+                                            </div>
+                                            <div class="upload-title">Drop your video here</div>
+                                            <div class="upload-subtitle">or click to browse</div>
+                                            <button type="button" class="upload-browse-btn" @click.stop="triggerFileInput">
+                                                <i class="fas fa-folder-open"></i>
+                                                Browse Files
+                                            </button>
+                                            <div class="upload-formats">
+                                                Supported: MP4, MOV, AVI, MKV, WebM (max 500MB)
+                                            </div>
+                                        </template>
+
+                                        <!-- File selected -->
+                                        <template v-else>
+                                            <div class="file-preview">
+                                                <div class="file-icon">
+                                                    <i class="fas fa-file-video"></i>
+                                                </div>
+                                                <div class="file-info">
+                                                    <div class="file-name">{{ selectedFile.name }}</div>
+                                                    <div class="file-meta">
+                                                        <span><i class="fas fa-hdd"></i> {{ formatFileSize(selectedFile.size) }}</span>
+                                                        <span><i class="fas fa-film"></i> {{ getFileExtension(selectedFile.name) }}</span>
+                                                    </div>
+                                                </div>
+                                                <button type="button" class="remove-file-btn" @click.stop="removeFile">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <input 
+                                        type="file"
+                                        ref="fileInput"
+                                        class="file-input-hidden"
+                                        accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/webm,.mp4,.mov,.avi,.mkv,.webm"
+                                        @change="handleFileSelect"
+                                    >
+                                    <div class="field-note">
+                                        Upload your video file for processing. Large files may take longer to upload.
+                                    </div>
+                                </div>
+
+                                <!-- Server Path Input -->
+                                <div v-if="localMode === 'path'" class="form-group">
+                                    <label for="filePath">Server File Path <span style="color: var(--primary-orange);">*</span></label>
+                                    <input 
+                                        type="text" 
+                                        id="filePath"
+                                        v-model="filePath" 
+                                        placeholder="/path/to/your/video.mp4"
+                                    >
+                                    <div class="field-note">
+                                        Full path to a video file on the server (for n8n workflows with local file access)
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -937,8 +1370,8 @@
                             <button type="submit" class="btn" :disabled="!isFormValid || loading">
                                 <span v-if="loading" class="spinner"></span>
                                 <i v-else class="fas fa-paper-plane"></i>
-                                <span v-if="loading">Sending to n8n...</span>
-                                <span v-else>Send to n8n Webhook</span>
+                                <span v-if="loading">{{ uploadProgress ? `Uploading ${uploadProgress}%...` : 'Processing...' }}</span>
+                                <span v-else>{{ useDirectApi ? 'Process Video' : 'Send to n8n Webhook' }}</span>
                             </button>
                         </div>
 
@@ -963,41 +1396,33 @@
                                 Generated Videos
                             </div>
                             
-                            <div v-for="(file, index) in processingResults.output_files" :key="index" 
-                                 style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border-color);">
-                                <div style="display: flex; justify-content: space-between; align-items: start; gap: 12px;">
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: 600; font-size: 14px; color: var(--dark-neutral); margin-bottom: 4px;">
-                                            <i class="fas fa-film" style="color: var(--primary-orange); margin-right: 8px;"></i>
+                            <div v-for="(file, index) in processingResults.output_files" :key="index" class="result-card">
+                                <div class="result-card-header">
+                                    <div class="result-card-info">
+                                        <div class="result-card-title">
+                                            <i class="fas fa-film"></i>
                                             {{ file.filename }}
                                         </div>
-                                        <div style="font-size: 12px; color: var(--text-secondary);">
+                                        <div class="result-card-meta">
                                             {{ formatFileSize(file.size) }} • {{ file.storage === 'azure_blob' ? '☁️ Azure Blob' : '💾 Local' }}
                                         </div>
                                     </div>
-                                    <div style="display: flex; gap: 8px;">
-                                        <a :href="file.url" target="_blank" 
-                                           style="padding: 8px 16px; background: var(--primary-orange); color: white; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 500;">
+                                    <div class="result-card-actions">
+                                        <a :href="file.url" target="_blank" class="result-download-btn">
                                             <i class="fas fa-download"></i> Download
                                         </a>
-                                        <button @click="copyToClipboard(file.url)" 
-                                                style="padding: 8px 12px; background: white; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer;">
+                                        <button type="button" @click="copyToClipboard(file.url)" class="result-copy-btn">
                                             <i class="fas fa-copy"></i>
                                         </button>
                                     </div>
                                 </div>
-                                <div style="margin-top: 8px;">
-                                    <input type="text" :value="file.url" readonly 
-                                           style="width: 100%; padding: 8px; font-size: 12px; background: white; border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-secondary);">
-                                </div>
+                                <input type="text" :value="file.url" readonly class="result-url-input">
                             </div>
                             
-                            <div style="background: var(--success-bg); border: 1px solid var(--success-border); border-radius: 6px; padding: 12px; margin-top: 12px;">
-                                <div style="font-size: 13px; color: var(--success-text);">
-                                    <i class="fas fa-check-circle"></i>
-                                    <strong>Job ID:</strong> {{ processingResults.job_id }}<br>
-                                    <strong>Processing Time:</strong> {{ processingResults.processing_time?.toFixed(1) }} seconds
-                                </div>
+                            <div class="result-summary">
+                                <i class="fas fa-check-circle"></i>
+                                <strong>Job ID:</strong> {{ processingResults.job_id }}<br>
+                                <strong>Processing Time:</strong> {{ processingResults.processing_time?.toFixed(1) }} seconds
                             </div>
                         </div>
                     </form>
@@ -1011,7 +1436,24 @@
                             Preview & Summary
                         </div>
 
-                        <div class="preview-placeholder">
+                        <!-- Video Preview (when file selected) -->
+                        <div v-if="selectedFile && videoPreviewUrl" class="video-preview-container">
+                            <video 
+                                :src="videoPreviewUrl" 
+                                class="video-preview-player"
+                                controls
+                            ></video>
+                            <div class="video-preview-info">
+                                <div class="video-preview-name">{{ selectedFile.name }}</div>
+                                <div class="video-preview-meta">
+                                    <span>{{ formatFileSize(selectedFile.size) }}</span>
+                                    <span>{{ getFileExtension(selectedFile.name) }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Placeholder (no file) -->
+                        <div v-else class="preview-placeholder">
                             <div class="preview-placeholder-icon">
                                 <i class="fas fa-video"></i>
                             </div>
@@ -1026,7 +1468,7 @@
                                 </li>
                                 <li>
                                     <span class="step-num">2</span>
-                                    Add YouTube URL or file path
+                                    Add YouTube URL or upload file
                                 </li>
                                 <li>
                                     <span class="step-num">3</span>
@@ -1046,7 +1488,11 @@
                             <div class="cost-summary-title">Processing Summary</div>
                             <div class="cost-line">
                                 <span>Input Type</span>
-                                <span>{{ inputType === 'youtube' ? 'YouTube' : 'Local File' }}</span>
+                                <span>{{ inputTypeDisplay }}</span>
+                            </div>
+                            <div class="cost-line" v-if="selectedFile">
+                                <span>File Size</span>
+                                <span>{{ formatFileSize(selectedFile.size) }}</span>
                             </div>
                             <div class="cost-line">
                                 <span>Clips to Generate</span>
@@ -1080,30 +1526,43 @@
                 // API Configuration
                 webhookUrl: '',
                 azureApiUrl: 'http://zuke-video-8164.eastus.azurecontainer.io:8000',
-                useDirectApi: false, // Toggle between n8n webhook and direct Azure API
+                useDirectApi: false,
                 
                 // Form inputs
                 inputType: 'youtube',
+                localMode: 'upload', // 'upload' or 'path'
                 youtubeUrl: 'https://www.youtube.com/watch?v=FeirRhBRc5w',
                 filePath: '',
+                selectedFile: null,
+                videoPreviewUrl: null,
                 numClips: 3,
-                autoApprove: true, // Default to true for Azure processing
+                autoApprove: true,
                 outputTypes: ['subtitled'],
                 jobId: '',
                 
                 // State
                 loading: false,
+                uploadProgress: null,
                 status: null,
                 lastPayload: null,
                 processingResults: null,
-                pollingInterval: null
+                isDragOver: false
             };
         },
         computed: {
             isFormValid() {
                 if (!this.useDirectApi && !this.webhookUrl) return false;
-                if (this.inputType === 'youtube' && !this.youtubeUrl) return false;
-                if (this.inputType === 'local' && !this.filePath) return false;
+                
+                if (this.inputType === 'youtube') {
+                    return !!this.youtubeUrl;
+                } else {
+                    if (this.localMode === 'upload') {
+                        return !!this.selectedFile;
+                    } else {
+                        return !!this.filePath;
+                    }
+                }
+                
                 if (this.outputTypes.length === 0) return false;
                 return true;
             },
@@ -1120,20 +1579,110 @@
                 return this.useDirectApi 
                     ? `${this.azureApiUrl}/process`
                     : this.webhookUrl;
+            },
+            inputTypeDisplay() {
+                if (this.inputType === 'youtube') return 'YouTube';
+                if (this.localMode === 'upload') return 'File Upload';
+                return 'Server Path';
             }
         },
         methods: {
+            // File handling methods
+            triggerFileInput() {
+                this.$refs.fileInput.click();
+            },
+            
+            handleFileSelect(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    this.setSelectedFile(file);
+                }
+            },
+            
+            handleDragOver(event) {
+                this.isDragOver = true;
+            },
+            
+            handleDragLeave(event) {
+                this.isDragOver = false;
+            },
+            
+            handleDrop(event) {
+                this.isDragOver = false;
+                const file = event.dataTransfer.files[0];
+                if (file && this.isValidVideoFile(file)) {
+                    this.setSelectedFile(file);
+                } else {
+                    this.status = {
+                        type: 'error',
+                        title: 'Invalid File',
+                        message: 'Please select a valid video file (MP4, MOV, AVI, MKV, or WebM)'
+                    };
+                }
+            },
+            
+            isValidVideoFile(file) {
+                const validTypes = [
+                    'video/mp4',
+                    'video/quicktime',
+                    'video/x-msvideo',
+                    'video/x-matroska',
+                    'video/webm'
+                ];
+                const validExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
+                const extension = '.' + file.name.split('.').pop().toLowerCase();
+                
+                return validTypes.includes(file.type) || validExtensions.includes(extension);
+            },
+            
+            setSelectedFile(file) {
+                // Check file size (500MB limit)
+                const maxSize = 500 * 1024 * 1024;
+                if (file.size > maxSize) {
+                    this.status = {
+                        type: 'error',
+                        title: 'File Too Large',
+                        message: `Maximum file size is 500MB. Your file is ${this.formatFileSize(file.size)}.`
+                    };
+                    return;
+                }
+                
+                this.selectedFile = file;
+                
+                // Create video preview URL
+                if (this.videoPreviewUrl) {
+                    URL.revokeObjectURL(this.videoPreviewUrl);
+                }
+                this.videoPreviewUrl = URL.createObjectURL(file);
+                
+                this.status = null;
+            },
+            
+            removeFile() {
+                this.selectedFile = null;
+                if (this.videoPreviewUrl) {
+                    URL.revokeObjectURL(this.videoPreviewUrl);
+                    this.videoPreviewUrl = null;
+                }
+                // Reset file input
+                if (this.$refs.fileInput) {
+                    this.$refs.fileInput.value = '';
+                }
+            },
+            
+            getFileExtension(filename) {
+                return filename.split('.').pop().toUpperCase();
+            },
+
             generateJobId() {
                 return `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             },
 
             buildPayload() {
-                return {
+                const payload = {
                     job_id: this.jobId || this.generateJobId(),
                     timestamp: new Date().toISOString(),
                     input_type: this.inputType,
-                    youtube_url: this.inputType === 'youtube' ? this.youtubeUrl : null,
-                    video_file_path: this.inputType === 'local' ? this.filePath : null,
                     processing_options: {
                         num_clips: this.numClips,
                         auto_approve: this.autoApprove,
@@ -1146,6 +1695,15 @@
                         processing_mode: this.autoApprove ? 'batch' : 'interactive'
                     }
                 };
+
+                if (this.inputType === 'youtube') {
+                    payload.youtube_url = this.youtubeUrl;
+                } else if (this.localMode === 'path') {
+                    payload.video_file_path = this.filePath;
+                }
+                // For file upload, we'll handle it differently with FormData
+
+                return payload;
             },
 
             async submitToWebhook() {
@@ -1154,23 +1712,17 @@
                 this.loading = true;
                 this.status = null;
                 this.processingResults = null;
+                this.uploadProgress = null;
 
                 try {
-                    const payload = this.buildPayload();
-                    this.lastPayload = payload;
+                    let response;
 
-                    this.status = {
-                        type: 'processing',
-                        title: 'Processing Video...',
-                        message: `Sending request to ${this.useDirectApi ? 'Azure API' : 'n8n webhook'}. This may take several minutes for video processing.`
-                    };
-
-                    const response = await axios.post(this.targetUrl, payload, {
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        timeout: 1800000 // 30 minutes timeout for video processing
-                    });
+                    // Handle file upload
+                    if (this.inputType === 'local' && this.localMode === 'upload' && this.selectedFile) {
+                        response = await this.submitWithFileUpload();
+                    } else {
+                        response = await this.submitJsonPayload();
+                    }
 
                     // Handle successful response
                     this.processingResults = response.data;
@@ -1210,10 +1762,120 @@
                     };
                 } finally {
                     this.loading = false;
+                    this.uploadProgress = null;
                 }
             },
 
-            async checkHealth() {
+            async submitWithFileUpload() {
+                // Step 1: Upload to Azure Blob Storage
+                this.status = {
+                    type: 'processing',
+                    title: 'Uploading to Azure Storage...',
+                    message: 'Please wait while your video is being uploaded.'
+                };
+
+                try {
+                    // Upload to Azure Blob Storage
+                    const azureVideoUrl = await this.uploadToAzureStorage(this.selectedFile);
+                    
+                    // Step 2: Submit the Azure URL to n8n/API
+                    this.status = {
+                        type: 'processing',
+                        title: 'Processing Video...',
+                        message: 'Video uploaded. Starting AI processing...'
+                    };
+
+                    const payload = this.buildPayload();
+                    payload.input_type = 'youtube'; // Use youtube type (works for any URL)
+                    payload.youtube_url = azureVideoUrl;
+                    delete payload.video_file_path; // Remove if exists
+
+                    this.lastPayload = {
+                        ...payload,
+                        source_file_name: this.selectedFile.name,
+                        source_file_size: this.selectedFile.size,
+                        azure_storage_url: azureVideoUrl
+                    };
+
+                    return axios.post(this.targetUrl, payload, {
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        timeout: 1800000 // 30 minutes timeout
+                    });
+
+                } catch (error) {
+                    if (error.message && error.message.includes('Azure Storage')) {
+                        throw new Error(`Azure Storage upload failed: ${error.message}`);
+                    }
+                    throw error;
+                }
+            },
+
+            async uploadToAzureStorage(file) {
+                // Azure Storage configuration
+                const storageAccountName = 'zukestorage3833';
+                const containerName = 'videos';
+                const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+                
+                // Note: This uses anonymous blob upload (requires container to allow public uploads)
+                // For production, implement SAS token or backend proxy
+                const uploadUrl = `https://${storageAccountName}.blob.core.windows.net/${containerName}/${fileName}`;
+
+                return new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    
+                    xhr.upload.addEventListener('progress', (e) => {
+                        if (e.lengthComputable) {
+                            this.uploadProgress = Math.round((e.loaded * 100) / e.total);
+                        }
+                    });
+
+                    xhr.addEventListener('load', () => {
+                        if (xhr.status === 201) {
+                            // Blob uploaded successfully
+                            const blobUrl = `https://${storageAccountName}.blob.core.windows.net/${containerName}/${fileName}`;
+                            this.uploadProgress = null;
+                            resolve(blobUrl);
+                        } else {
+                            reject(new Error(`Azure Storage upload failed with status ${xhr.status}`));
+                        }
+                    });
+
+                    xhr.addEventListener('error', () => {
+                        reject(new Error('Azure Storage upload failed: Network error'));
+                    });
+
+                    xhr.addEventListener('abort', () => {
+                        reject(new Error('Azure Storage upload aborted'));
+                    });
+
+                    xhr.open('PUT', uploadUrl);
+                    xhr.setRequestHeader('x-ms-blob-type', 'BlockBlob');
+                    xhr.setRequestHeader('Content-Type', file.type || 'video/mp4');
+                    xhr.send(file);
+                });
+            },
+
+            async submitJsonPayload() {
+                const payload = this.buildPayload();
+                this.lastPayload = payload;
+
+                this.status = {
+                    type: 'processing',
+                    title: 'Processing Video...',
+                    message: `Sending request to ${this.useDirectApi ? 'Azure API' : 'n8n webhook'}. This may take several minutes for video processing.`
+                };
+
+                return axios.post(this.targetUrl, payload, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: 1800000 // 30 minutes timeout
+                });
+            },
+
+                        async checkHealth() {
                 try {
                     const response = await axios.get(`${this.azureApiUrl}/`, { timeout: 5000 });
                     return response.data.status === 'running';
@@ -1224,20 +1886,35 @@
 
             copyToClipboard(text) {
                 navigator.clipboard.writeText(text).then(() => {
-                    // Brief visual feedback could be added here
-                    console.log('Copied to clipboard:', text);
+                    // Show brief feedback
+                    const originalStatus = this.status;
+                    this.status = {
+                        type: 'success',
+                        title: 'Copied!',
+                        message: 'URL copied to clipboard'
+                    };
+                    setTimeout(() => {
+                        if (this.status?.title === 'Copied!') {
+                            this.status = originalStatus;
+                        }
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
                 });
             },
 
             formatFileSize(bytes) {
+                if (!bytes) return '0 B';
                 if (bytes < 1024) return bytes + ' B';
                 if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+                if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+                return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
             },
 
             resetForm() {
                 this.youtubeUrl = '';
                 this.filePath = '';
+                this.removeFile();
                 this.numClips = 3;
                 this.autoApprove = true;
                 this.outputTypes = ['subtitled'];
@@ -1267,6 +1944,13 @@
             });
         },
 
+        beforeUnmount() {
+            // Clean up video preview URL
+            if (this.videoPreviewUrl) {
+                URL.revokeObjectURL(this.videoPreviewUrl);
+            }
+        },
+
         watch: {
             webhookUrl(newUrl) {
                 if (newUrl) localStorage.setItem('zuke_webhook_url', newUrl);
@@ -1276,10 +1960,23 @@
             },
             useDirectApi(newVal) {
                 localStorage.setItem('zuke_use_direct_api', String(newVal));
+            },
+            // Reset file when switching input types
+            inputType(newVal) {
+                if (newVal === 'youtube') {
+                    this.removeFile();
+                }
+            },
+            // Reset file when switching local modes
+            localMode(newVal) {
+                if (newVal === 'path') {
+                    this.removeFile();
+                } else {
+                    this.filePath = '';
+                }
             }
         }
     }).mount('#app');
-</script>
-
+    </script>
 </body>
 </html>
