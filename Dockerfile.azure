@@ -1,23 +1,32 @@
-# Use Python 3.10 base image
-FROM python:3.10-slim
+# Use Ubuntu 22.04 (same as working Dockerfile.cpu)
+FROM ubuntu:22.04
 
 LABEL maintainer="zuke"
 LABEL project="zuke-video-shorts"
 
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Build tools (REQUIRED for compiling av/PyAV)
+    python3.10 \
+    python3.10-venv \
+    python3-pip \
+    # Build tools (for compiling av/PyAV)
     gcc \
     g++ \
     make \
     pkg-config \
-    # FFmpeg runtime + ALL development libraries (for PyAV)
+    # FFmpeg and development libraries
     ffmpeg \
+    libavdevice-dev \
+    libavfilter-dev \
     libavformat-dev \
     libavcodec-dev \
-    libavdevice-dev \
     libavutil-dev \
-    libavfilter-dev \
     libswscale-dev \
     libswresample-dev \
     libopus-dev \
@@ -25,41 +34,43 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsrtp2-dev \
     # ImageMagick (for moviepy text rendering)
     imagemagick \
-    # OpenCV dependencies (if using cv2)
+    # OpenCV dependencies
     libgl1-mesa-glx \
     libglib2.0-0 \
     # Utilities
+    git \
+    wget \
     curl \
-    # Fonts
-    fonts-liberation \
-    fonts-dejavu-core \
+    fontconfig \
+    unzip \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Fix ImageMagick security policy (handle multiple versions)
-RUN find /etc -name "policy.xml" -path "*/ImageMagick*" 2>/dev/null | head -1 | \
-    xargs -I {} sed -i 's/rights="none" pattern="@\*"/rights="read|write" pattern="@*"/' {} 2>/dev/null || \
-    echo "ImageMagick policy not found, skipping..."
+# Install Bebas Neue font (same as your working version)
+RUN wget -O /tmp/BebasNeue-Regular.ttf https://github.com/google/fonts/raw/main/ofl/bebasneue/BebasNeue-Regular.ttf \
+    && mkdir -p /usr/share/fonts/truetype/bebas \
+    && cp /tmp/BebasNeue-Regular.ttf /usr/share/fonts/truetype/bebas/ \
+    && fc-cache -f -v \
+    && rm /tmp/BebasNeue-Regular.ttf
+
+# Fix ImageMagick security policy for subtitle rendering
+RUN sed -i 's/rights="none" pattern="@\*"/rights="read|write" pattern="@*"/' /etc/ImageMagick-6/policy.xml
 
 # Set working directory
 WORKDIR /app
 
-# Copy CPU-only requirements
+# Copy requirements first for better Docker layer caching
 COPY requirements-cpu.txt .
 
-# Install Python dependencies (CPU-only, much smaller!)
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements-cpu.txt
+# Install Python dependencies
+RUN pip3 install --no-cache-dir --upgrade pip && \
+    pip3 install --no-cache-dir -r requirements-cpu.txt
 
-# Copy all application files
+# Copy application code
 COPY . .
 
-# Create output directory
+# Create output directories
 RUN mkdir -p /app/output /app/videos /app/temp
-
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
 
 # Expose port for Azure Container Instances
 EXPOSE 8000
