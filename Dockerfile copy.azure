@@ -1,0 +1,72 @@
+# Use Python 3.10 base image
+FROM python:3.10-slim
+
+LABEL maintainer="zuke"
+LABEL project="zuke-video-shorts"
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Build tools (REQUIRED for compiling av/PyAV)
+    gcc \
+    g++ \
+    make \
+    pkg-config \
+    # FFmpeg runtime + ALL development libraries (for PyAV)
+    ffmpeg \
+    libavformat-dev \
+    libavcodec-dev \
+    libavdevice-dev \
+    libavutil-dev \
+    libavfilter-dev \
+    libswscale-dev \
+    libswresample-dev \
+    libopus-dev \
+    libvpx-dev \
+    libsrtp2-dev \
+    # ImageMagick (for moviepy text rendering)
+    imagemagick \
+    # OpenCV dependencies (if using cv2)
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    # Utilities
+    curl \
+    # Fonts
+    fonts-liberation \
+    fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Fix ImageMagick security policy (handle multiple versions)
+RUN find /etc -name "policy.xml" -path "*/ImageMagick*" 2>/dev/null | head -1 | \
+    xargs -I {} sed -i 's/rights="none" pattern="@\*"/rights="read|write" pattern="@*"/' {} 2>/dev/null || \
+    echo "ImageMagick policy not found, skipping..."
+
+# Set working directory
+WORKDIR /app
+
+# Copy CPU-only requirements
+COPY requirements-cpu.txt .
+
+# Install Python dependencies (CPU-only, much smaller!)
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements-cpu.txt
+
+# Copy all application files
+COPY . .
+
+# Create output directory
+RUN mkdir -p /app/output /app/videos /app/temp
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Expose port for Azure Container Instances
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/ || exit 1
+
+# Start the Azure API server
+CMD ["python3", "azure_api.py"]
