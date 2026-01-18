@@ -37,6 +37,9 @@ demos/
 temp/
 tmp/
 
+# Models (large binary files)
+models/
+
 # IDE
 .vscode/
 .idea/
