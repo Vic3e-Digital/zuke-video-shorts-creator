@@ -1513,6 +1513,20 @@ function Deploy-Container {
 
     if ($containerExists -and $containerExists -ne "[DRY-RUN-VALUE]") {
         if ($Recreate) {
+            Write-Info "Getting existing DNS label to preserve URL..."
+            
+            # Get existing DNS label before deletion
+            $existingDnsLabel = Invoke-AzCommand `
+                -Command "container show --resource-group $($script:Config.ResourceGroup) --name $($script:Config.ContainerName) --query ipAddress.dnsNameLabel -o tsv" `
+                -Description "Get existing DNS label" `
+                -CaptureOutput `
+                -SuppressError
+            
+            if ($existingDnsLabel -and $existingDnsLabel -ne "[DRY-RUN-VALUE]") {
+                Write-Success "Existing DNS label: $existingDnsLabel (URL will be preserved)"
+                $dnsLabel = $existingDnsLabel
+            }
+            
             Write-Info "Deleting existing container for recreation..."
 
             Invoke-AzCommand `
@@ -1578,8 +1592,10 @@ function Deploy-Container {
         $secureEnvVars += "AZURE_STORAGE_SAS_TOKEN=$($EnvFile['AZURE_STORAGE_SAS_TOKEN'])"
     }
 
-    # Generate DNS label
-    $dnsLabel = "$ResourcePrefix-video-$(Get-Random -Maximum 9999)"
+    # Generate DNS label (or use preserved one from Recreate)
+    if (-not $dnsLabel) {
+        $dnsLabel = "$ResourcePrefix-video-$(Get-Random -Maximum 9999)"
+    }
 
     # Build image name
     $imageName = "$($script:AcrServer)/zuke-video-shorts:latest"
