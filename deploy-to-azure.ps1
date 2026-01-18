@@ -6,12 +6,20 @@
 
 .DESCRIPTION
     Deploys the Zuke Video Shorts application to Azure Container Instances.
-    Supports both local Docker builds and cloud-based ACR Build.
+    Supports both local Docker builds and cloud-based ACR Build from GitHub.
     Includes security best practices for handling secrets.
 
 .PARAMETER UseLocalDocker
     Use local Docker to build and push (requires Docker Desktop)
-    Default: Uses ACR Build (no local Docker needed)
+
+.PARAMETER UseLocalFiles
+    Use local files for ACR build instead of GitHub (legacy mode, may hang on macOS)
+
+.PARAMETER GitHubRepo
+    GitHub repository URL (default: auto-detected from git remote)
+
+.PARAMETER GitHubBranch
+    GitHub branch to build from (default: main)
 
 .PARAMETER Cleanup
     Remove all deployed resources
@@ -28,13 +36,24 @@
 .PARAMETER Recreate
     Delete and recreate the container (useful for updates)
 
+.PARAMETER SetupGitHubAuth
+    Configure authentication for private GitHub repositories
+
 .EXAMPLE
     ./deploy-to-azure.ps1
-    # Deploy using ACR Build (no Docker needed)
+    # Deploy using ACR Build from GitHub (recommended)
+
+.EXAMPLE
+    ./deploy-to-azure.ps1 -GitHubRepo "https://github.com/myorg/myrepo.git" -GitHubBranch "develop"
+    # Deploy from specific GitHub repo and branch
 
 .EXAMPLE
     ./deploy-to-azure.ps1 -UseLocalDocker
     # Deploy using local Docker
+
+.EXAMPLE
+    ./deploy-to-azure.ps1 -UseLocalFiles
+    # Deploy using local files (legacy mode)
 
 .EXAMPLE
     ./deploy-to-azure.ps1 -DryRun
@@ -51,14 +70,22 @@
 .EXAMPLE
     ./deploy-to-azure.ps1 -Recreate
     # Update deployment by recreating container
+
+.EXAMPLE
+    ./deploy-to-azure.ps1 -SetupGitHubAuth
+    # Configure GitHub PAT for private repositories
 #>
 
 param(
     [switch]$UseLocalDocker,
+    [switch]$UseLocalFiles,
+    [string]$GitHubRepo = "",
+    [string]$GitHubBranch = "main",
     [switch]$Cleanup,
     [switch]$DryRun,
     [switch]$PrivateStorage,
     [switch]$Recreate,
+    [switch]$SetupGitHubAuth,
     [string]$ResourcePrefix = "zuke"
 )
 
@@ -85,6 +112,15 @@ $script:Config = @{
     CredentialsFile      = ".azure-storage-credentials.json"
     DeploymentInfoFile   = "azure-deployment-info.json"
     SourceArchive        = ".source-archive.tar.gz"
+}
+
+# GitHub configuration
+$script:GitHub = @{
+    RepoUrl      = ""    # Will be set from parameter or auto-detected
+    Branch       = ""    # Will be set from parameter
+    Context      = "."   # Path inside repo where Dockerfile.azure is located
+    TaskName     = "$ResourcePrefix-github-build"
+    IsConfigured = $false
 }
 
 # Environment variable definitions
@@ -326,6 +362,203 @@ function Test-IsMacOS {
     return $IsMacOS -or ($PSVersionTable.OS -match 'Darwin')
 }
 
+function Get-GitRemoteUrl {
+    try {
+        $remoteUrl = git remote get-url origin 2>$null
+        if ($remoteUrl) {
+            # Convert SSH to HTTPS if needed
+            if ($remoteUrl -match "^git@github\.com:(.+)$") {
+                $remoteUrl = "https://github.com/$($Matches[1])"
+            }
+            # Ensure .git suffix
+            if (-not $remoteUrl.EndsWith(".git")) {
+                $remoteUrl = "$remoteUrl.git"
+            }
+            return $remoteUrl
+        }
+    }
+    catch {
+        # Git not available or not a git repo
+    }
+    return $null
+}
+
+function Get-GitCurrentBranch {
+    try {
+        $branch = git branch --show-current 2>$null
+        if ($branch) {
+            return $branch.Trim()
+        }
+    }
+    catch {
+        # Git not available or not a git repo
+    }
+    return "main"
+}
+
+function Test-GitHubRepoAccessible {
+    param([string]$RepoUrl)
+    
+    try {
+        # Try to access the repo (for public repos)
+        $testUrl = $RepoUrl -replace "\.git$", ""
+        $response = Invoke-WebRequest -Uri $testUrl -Method Head -TimeoutSec 5 -ErrorAction SilentlyContinue
+        return $response.StatusCode -eq 200
+    }
+    catch {
+        # Could be private repo or network issue
+        return $false
+    }
+}
+
+# ============================================================================
+# GITHUB CONFIGURATION
+# ============================================================================
+
+function Initialize-GitHubConfig {
+    Write-Step "Configuring GitHub source..." "🐙"
+    
+    # Set branch from parameter or detect
+    if ([string]::IsNullOrWhiteSpace($GitHubBranch)) {
+        $script:GitHub.Branch = Get-GitCurrentBranch
+        Write-Info "Auto-detected branch: $($script:GitHub.Branch)"
+    }
+    else {
+        $script:GitHub.Branch = $GitHubBranch
+        Write-Info "Using specified branch: $($script:GitHub.Branch)"
+    }
+    
+    # Set repo URL from parameter or detect
+    if ([string]::IsNullOrWhiteSpace($GitHubRepo)) {
+        $detectedRepo = Get-GitRemoteUrl
+        if ($detectedRepo) {
+            $script:GitHub.RepoUrl = $detectedRepo
+            Write-Info "Auto-detected repository: $($script:GitHub.RepoUrl)"
+        }
+        else {
+            Write-Failure "Could not detect GitHub repository"
+            Write-Detail "Please specify -GitHubRepo parameter"
+            Write-Detail "Example: -GitHubRepo 'https://github.com/your-org/your-repo.git'"
+            exit 1
+        }
+    }
+    else {
+        # Ensure .git suffix
+        $script:GitHub.RepoUrl = if ($GitHubRepo.EndsWith(".git")) { $GitHubRepo } else { "$GitHubRepo.git" }
+        Write-Info "Using specified repository: $($script:GitHub.RepoUrl)"
+    }
+    
+    # Check if repo is accessible (public)
+    $isPublic = Test-GitHubRepoAccessible -RepoUrl $script:GitHub.RepoUrl
+    if ($isPublic) {
+        Write-Success "Repository is publicly accessible"
+    }
+    else {
+        Write-WarningMsg "Repository may be private or inaccessible"
+        Write-Detail "If private, run with -SetupGitHubAuth to configure access"
+    }
+    
+    $script:GitHub.IsConfigured = $true
+    
+    Write-Host ""
+    Write-Host "   ┌──────────────────────────────────────────────────────────┐" -ForegroundColor Blue
+    Write-Host "   │  📦 GITHUB BUILD SOURCE                                  │" -ForegroundColor Blue
+    Write-Host "   ├──────────────────────────────────────────────────────────┤" -ForegroundColor Blue
+    Write-Host ("   │  Repo:   {0,-47}│" -f ($script:GitHub.RepoUrl.Length -gt 47 ? ($script:GitHub.RepoUrl.Substring(0,44) + "...") : $script:GitHub.RepoUrl)) -ForegroundColor Blue
+    Write-Host ("   │  Branch: {0,-47}│" -f $script:GitHub.Branch) -ForegroundColor Blue
+    Write-Host ("   │  Path:   {0,-47}│" -f $script:GitHub.Context) -ForegroundColor Blue
+    Write-Host "   └──────────────────────────────────────────────────────────┘" -ForegroundColor Blue
+}
+
+function Setup-GitHubAuthentication {
+    Write-Banner "🔐 GITHUB AUTHENTICATION SETUP" "Yellow"
+    
+    Write-Host ""
+    Write-Host "This will configure access to private GitHub repositories." -ForegroundColor White
+    Write-Host ""
+    Write-Host "You'll need a GitHub Personal Access Token (PAT) with:" -ForegroundColor White
+    Write-Host "   • repo (read) access" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Create one at: https://github.com/settings/tokens" -ForegroundColor Cyan
+    Write-Host ""
+    
+    $username = Read-Host "GitHub username"
+    $pat = Read-Host "GitHub PAT (paste here)" -AsSecureString
+    
+    # Convert SecureString to plain text for Azure CLI
+    $patPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($pat)
+    )
+    
+    if ([string]::IsNullOrWhiteSpace($username) -or [string]::IsNullOrWhiteSpace($patPlain)) {
+        Write-Failure "Username and PAT are required"
+        exit 1
+    }
+    
+    # Ensure ACR exists first
+    $savedConfig = Get-SavedDeploymentConfig
+    if (-not $savedConfig -or -not $savedConfig.AcrName) {
+        Write-Failure "No ACR found. Run a deployment first to create resources."
+        exit 1
+    }
+    
+    $acrName = $savedConfig.AcrName
+    
+    Write-Step "Adding GitHub credentials to ACR Task..." "🔑"
+    
+    # Check if task exists
+    $taskExists = az acr task show --registry $acrName --name $script:GitHub.TaskName --query name -o tsv 2>$null
+    
+    if (-not $taskExists) {
+        Write-WarningMsg "ACR Task doesn't exist yet. Credentials will be added on first build."
+        
+        # Save credentials for later
+        $credFile = ".github-acr-credentials.json"
+        @{
+            Username = $username
+            # Don't save PAT to file for security - user will need to re-enter
+            ConfiguredAt = (Get-Date).ToString("o")
+        } | ConvertTo-Json | Out-File $credFile -Encoding UTF8
+        
+        Add-ToGitignore $credFile
+        Write-Success "GitHub username saved. PAT will be requested during build."
+    }
+    else {
+        # Add credentials to existing task
+        az acr task credential add `
+            --registry $acrName `
+            --name $script:GitHub.TaskName `
+            --login-server github.com `
+            --username $username `
+            --password $patPlain 2>$null
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Success "GitHub credentials added to ACR Task"
+        }
+        else {
+            # Try updating instead of adding
+            az acr task credential update `
+                --registry $acrName `
+                --name $script:GitHub.TaskName `
+                --login-server github.com `
+                --username $username `
+                --password $patPlain
+            
+            if ($LASTEXITCODE -eq 0) {
+                Write-Success "GitHub credentials updated in ACR Task"
+            }
+            else {
+                Write-Failure "Failed to configure GitHub credentials"
+            }
+        }
+    }
+    
+    Write-Host ""
+    Write-Host "GitHub authentication configured." -ForegroundColor Green
+    Write-Host "Run ./deploy-to-azure.ps1 to deploy from your private repository." -ForegroundColor White
+    exit 0
+}
+
 # ============================================================================
 # CLEANUP FUNCTION
 # ============================================================================
@@ -386,7 +619,8 @@ function Invoke-Cleanup {
             $script:Config.ConfigFile,
             $script:Config.CredentialsFile,
             $script:Config.DeploymentInfoFile,
-            $script:Config.SourceArchive
+            $script:Config.SourceArchive,
+            ".github-acr-credentials.json"
         )
 
         foreach ($file in $filesToRemove) {
@@ -453,6 +687,22 @@ function Test-Prerequisites {
         Write-Success "Docker: Not required (using ACR Build)"
     }
 
+    # Check Git (for GitHub mode)
+    if (-not $UseLocalDocker -and -not $UseLocalFiles) {
+        try {
+            $gitVersion = git --version 2>$null
+            if ($gitVersion) {
+                Write-Success "Git: $($gitVersion -replace 'git version ', '')"
+            }
+            else {
+                throw "Git not responding"
+            }
+        }
+        catch {
+            Write-WarningMsg "Git not found - you must specify -GitHubRepo manually"
+        }
+    }
+
     # Check Azure login
     try {
         $account = az account show 2>$null | ConvertFrom-Json
@@ -490,14 +740,14 @@ function Test-Prerequisites {
         $allValid = $false
     }
 
-    # Check for tar (needed for macOS workaround)
-    if (-not $UseLocalDocker) {
+    # Check for tar (needed for local files mode on macOS)
+    if ($UseLocalFiles -and -not $UseLocalDocker) {
         $tarExists = Get-Command tar -ErrorAction SilentlyContinue
         if ($tarExists) {
             Write-Success "tar: Available"
         }
         else {
-            Write-Failure "tar command not found (required for ACR Build)"
+            Write-Failure "tar command not found (required for local file builds)"
             $allValid = $false
         }
     }
@@ -997,9 +1247,126 @@ tar -czf "$archiveName" \
     return $archivePath
 }
 
-function Build-WithACR {
-    Write-Step "Building Docker image using ACR Build..." "☁️"
-    Write-Info "This builds in Azure (no local Docker required)"
+function Build-WithGitHubACR {
+    Write-Step "Building Docker image from GitHub using ACR Task..." "☁️"
+    
+    Write-Host ""
+    Write-Host "   ┌─────────────────────────────────────────────────────────┐" -ForegroundColor Cyan
+    Write-Host "   │  🐙 GITHUB-BASED BUILD                                  │" -ForegroundColor Cyan
+    Write-Host "   │                                                         │" -ForegroundColor Cyan
+    Write-Host "   │  ✅ No local file upload                                │" -ForegroundColor Cyan
+    Write-Host "   │  ✅ No macOS compatibility issues                       │" -ForegroundColor Cyan
+    Write-Host "   │  ✅ Azure pulls directly from GitHub                    │" -ForegroundColor Cyan
+    Write-Host "   │                                                         │" -ForegroundColor Cyan
+    Write-Host ("   │  Repo:   {0,-44}│" -f ($script:GitHub.RepoUrl.Length -gt 44 ? "..." + $script:GitHub.RepoUrl.Substring($script:GitHub.RepoUrl.Length - 41) : $script:GitHub.RepoUrl)) -ForegroundColor Cyan
+    Write-Host ("   │  Branch: {0,-44}│" -f $script:GitHub.Branch) -ForegroundColor Cyan
+    Write-Host "   └─────────────────────────────────────────────────────────┘" -ForegroundColor Cyan
+    Write-Host ""
+    
+    # Build the context URL for ACR
+    $contextUrl = "$($script:GitHub.RepoUrl)#$($script:GitHub.Branch):$($script:GitHub.Context)"
+    
+    Write-Info "Context URL: $contextUrl"
+    
+    # Check if task already exists
+    $taskExists = Invoke-AzCommand `
+        -Command "acr task show --registry $($script:Config.AcrName) --name $($script:GitHub.TaskName) --query name -o tsv" `
+        -Description "Check ACR task" `
+        -CaptureOutput `
+        -SuppressError
+
+    if (-not $taskExists -or $taskExists -eq "[DRY-RUN-VALUE]") {
+        Write-Info "Creating ACR Task (one-time setup)..."
+        
+        if ($DryRun) {
+            Write-DryRun "az acr task create --registry $($script:Config.AcrName) --name $($script:GitHub.TaskName) ..."
+        }
+        else {
+            # Create the ACR Task
+            az acr task create `
+                --registry $script:Config.AcrName `
+                --name $script:GitHub.TaskName `
+                --context $contextUrl `
+                --file Dockerfile.azure `
+                --image "zuke-video-shorts:latest" `
+                --platform linux/amd64 `
+                --commit-trigger-enabled false `
+                --pull-request-trigger-enabled false
+            
+            if ($LASTEXITCODE -ne 0) {
+                Write-Failure "Failed to create ACR Task"
+                Write-Host ""
+                Write-Host "   Troubleshooting:" -ForegroundColor Yellow
+                Write-Detail "• Ensure the GitHub repository is accessible"
+                Write-Detail "• For private repos, run: ./deploy-to-azure.ps1 -SetupGitHubAuth"
+                Write-Detail "• Check that Dockerfile.azure exists in the repository"
+                exit 1
+            }
+            
+            Write-Success "ACR Task created: $($script:GitHub.TaskName)"
+        }
+    }
+    else {
+        Write-Success "Using existing ACR Task: $($script:GitHub.TaskName)"
+        
+        # Update the task with latest context (in case branch changed)
+        Write-Info "Updating task with current branch..."
+        
+        if (-not $DryRun) {
+            az acr task update `
+                --registry $script:Config.AcrName `
+                --name $script:GitHub.TaskName `
+                --context $contextUrl 2>$null
+        }
+    }
+    
+    Write-Host ""
+    Write-Info "Running GitHub-based build..."
+    Write-Detail "This may take 5-10 minutes. Build logs will appear below."
+    Write-Host ""
+    
+    $buildStart = Get-Date
+    
+    if ($DryRun) {
+        Write-DryRun "az acr task run --registry $($script:Config.AcrName) --name $($script:GitHub.TaskName)"
+    }
+    else {
+        # Run the task
+        az acr task run `
+            --registry $script:Config.AcrName `
+            --name $script:GitHub.TaskName
+        
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host ""
+            Write-Failure "GitHub build failed"
+            Write-Host ""
+            Write-Host "   Troubleshooting:" -ForegroundColor Yellow
+            Write-Detail "• Check that Dockerfile.azure is valid"
+            Write-Detail "• Ensure requirements-cpu.txt exists"
+            Write-Detail "• View logs: az acr task logs --registry $($script:Config.AcrName) --name $($script:GitHub.TaskName)"
+            Write-Detail "• For private repos: ./deploy-to-azure.ps1 -SetupGitHubAuth"
+            exit 1
+        }
+    }
+    
+    $buildEnd = Get-Date
+    $buildDuration = $buildEnd - $buildStart
+    
+    Write-Host ""
+    Write-Host "   ┌─────────────────────────────────────────────────────────┐" -ForegroundColor Green
+    Write-Host "   │  ✅ GITHUB BUILD SUCCESSFUL                             │" -ForegroundColor Green
+    Write-Host "   │                                                         │" -ForegroundColor Green
+    Write-Host ("   │  Duration: {0,-43}│" -f ("{0:N1} minutes" -f $buildDuration.TotalMinutes)) -ForegroundColor Green
+    Write-Host "   │  Image: zuke-video-shorts:latest                        │" -ForegroundColor Green
+    Write-Host ("   │  Source: {0,-44}│" -f $script:GitHub.Branch) -ForegroundColor Green
+    Write-Host "   └─────────────────────────────────────────────────────────┘" -ForegroundColor Green
+}
+
+function Build-WithLocalFilesACR {
+    Write-Step "Building Docker image using ACR Build (local files)..." "☁️"
+    Write-WarningMsg "Using legacy local file upload mode"
+    Write-Info "This may hang on macOS. Consider using GitHub mode instead."
+    Write-Host ""
     
     # Calculate and show upload estimate
     $uploadInfo = Get-UploadEstimate
@@ -1046,7 +1413,6 @@ function Build-WithACR {
     Write-Host ""
     
     # Azure CLI will create its own archive internally and handle the upload
-    # Using --no-wait would be faster but we need to wait for the build
     $env:AZURE_CORE_COLLECT_TELEMETRY = "false"
     
     az acr build `
@@ -1060,7 +1426,7 @@ function Build-WithACR {
     $buildEnd = Get-Date
     $buildDuration = $buildEnd - $buildStart
     
-    # Clean up the archive (still useful for size estimates)
+    # Clean up the archive
     if (Test-Path $archivePath) {
         Remove-Item $archivePath -Force
         Write-Detail "Cleaned up temporary archive"
@@ -1075,6 +1441,7 @@ function Build-WithACR {
         Write-Detail "• Verify requirements-cpu.txt exists"
         Write-Detail "• Check Azure Portal > ACR > Tasks for logs"
         Write-Detail "• Run: az acr task list-runs --registry $($script:Config.AcrName) --output table"
+        Write-Detail "• Try GitHub mode: ./deploy-to-azure.ps1 (without -UseLocalFiles)"
         exit 1
     }
     
@@ -1294,6 +1661,9 @@ function Save-DeploymentInfo {
         APIEndpoint       = "$baseUrl/process"
         HealthCheck       = "$baseUrl/"
         VideoStorageURL   = $storageUrl
+        BuildSource       = if ($UseLocalDocker) { "LocalDocker" } elseif ($UseLocalFiles) { "LocalFiles" } else { "GitHub" }
+        GitHubRepo        = if (-not $UseLocalDocker -and -not $UseLocalFiles) { $script:GitHub.RepoUrl } else { $null }
+        GitHubBranch      = if (-not $UseLocalDocker -and -not $UseLocalFiles) { $script:GitHub.Branch } else { $null }
     }
 
     $deploymentInfo | ConvertTo-Json -Depth 3 | Out-File -FilePath $script:Config.DeploymentInfoFile -Encoding UTF8
@@ -1304,6 +1674,9 @@ function Save-DeploymentInfo {
         AcrName            = $script:Config.AcrName
         StorageAccountName = $EnvFile['AZURE_STORAGE_ACCOUNT_NAME']
         ContainerName      = $script:Config.ContainerName
+        GitHubRepo         = $script:GitHub.RepoUrl
+        GitHubBranch       = $script:GitHub.Branch
+        GitHubTaskName     = $script:GitHub.TaskName
         LastDeployed       = (Get-Date).ToString("o")
     }
 
@@ -1337,6 +1710,13 @@ function Show-Summary {
     Write-Host "📊 DEPLOYMENT STATUS" -ForegroundColor Yellow
     Write-Host "   Container State:    " -NoNewline
     Write-Host "$containerState" -ForegroundColor $stateColor
+    
+    # Show build source
+    $buildSource = if ($UseLocalDocker) { "Local Docker" } elseif ($UseLocalFiles) { "Local Files → ACR" } else { "GitHub → ACR" }
+    Write-Host "   Build Source:       $buildSource" -ForegroundColor White
+    if (-not $UseLocalDocker -and -not $UseLocalFiles) {
+        Write-Host "   GitHub Branch:      $($script:GitHub.Branch)" -ForegroundColor White
+    }
     Write-Host ""
 
     Write-Host "🌐 ENDPOINTS" -ForegroundColor Yellow
@@ -1355,6 +1735,9 @@ function Show-Summary {
     Write-Host "   Container Registry: $($script:Config.AcrName)" -ForegroundColor White
     Write-Host "   Storage Account:    $($EnvFile['AZURE_STORAGE_ACCOUNT_NAME'])" -ForegroundColor White
     Write-Host "   Container:          $($script:Config.ContainerName)" -ForegroundColor White
+    if (-not $UseLocalDocker -and -not $UseLocalFiles) {
+        Write-Host "   ACR Task:           $($script:GitHub.TaskName)" -ForegroundColor White
+    }
     Write-Host ""
 
     if ($PrivateStorage) {
@@ -1390,6 +1773,18 @@ function Show-Summary {
     Write-Host "./deploy-to-azure.ps1 -Recreate" -ForegroundColor DarkGray
     Write-Host "   Cleanup:      " -NoNewline -ForegroundColor White
     Write-Host "./deploy-to-azure.ps1 -Cleanup" -ForegroundColor DarkGray
+    
+    if (-not $UseLocalDocker -and -not $UseLocalFiles) {
+        Write-Host ""
+        Write-Host "🐙 GITHUB BUILD COMMANDS" -ForegroundColor Yellow
+        Write-Host "   Rebuild from GitHub:  " -NoNewline -ForegroundColor White
+        Write-Host "az acr task run --registry $($script:Config.AcrName) --name $($script:GitHub.TaskName)" -ForegroundColor DarkGray
+        Write-Host "   View build logs:      " -NoNewline -ForegroundColor White
+        Write-Host "az acr task logs --registry $($script:Config.AcrName) --name $($script:GitHub.TaskName)" -ForegroundColor DarkGray
+        Write-Host "   List builds:          " -NoNewline -ForegroundColor White
+        Write-Host "az acr task list-runs --registry $($script:Config.AcrName) -o table" -ForegroundColor DarkGray
+    }
+    
     Write-Host ""
 
     Write-Host "💾 Files saved:" -ForegroundColor Green
@@ -1405,7 +1800,13 @@ function Show-Summary {
 # MAIN EXECUTION
 # ============================================================================
 
-# Handle cleanup mode first
+# Handle GitHub auth setup first
+if ($SetupGitHubAuth) {
+    Setup-GitHubAuthentication
+    exit 0
+}
+
+# Handle cleanup mode
 if ($Cleanup) {
     Invoke-Cleanup
     exit 0
@@ -1417,7 +1818,13 @@ Write-Banner "🚀 AZURE DEPLOYMENT: Zuke Video Shorts Creator"
 # Show mode indicators
 $modes = @()
 if ($DryRun) { $modes += "DRY RUN" }
-if ($UseLocalDocker) { $modes += "LOCAL DOCKER" } else { $modes += "ACR BUILD" }
+if ($UseLocalDocker) { 
+    $modes += "LOCAL DOCKER" 
+} elseif ($UseLocalFiles) { 
+    $modes += "LOCAL FILES → ACR" 
+} else { 
+    $modes += "GITHUB → ACR" 
+}
 if ($PrivateStorage) { $modes += "PRIVATE STORAGE" }
 if ($Recreate) { $modes += "RECREATE" }
 
@@ -1429,7 +1836,11 @@ if ($modes.Count -gt 0) {
 # Detect macOS and show note
 if (Test-IsMacOS) {
     Write-Host ""
-    Write-Host "   Platform: macOS (using archive upload for compatibility)" -ForegroundColor DarkGray
+    if ($UseLocalFiles) {
+        Write-Host "   Platform: macOS (⚠️ local file upload may hang - consider GitHub mode)" -ForegroundColor Yellow
+    } else {
+        Write-Host "   Platform: macOS (✅ using GitHub mode for reliability)" -ForegroundColor Green
+    }
 }
 
 # Step 1: Validate prerequisites
@@ -1445,30 +1856,36 @@ if (-not $envFile.ContainsKey('AZURE_OPENAI_API_VERSION') -or
     $envFile['AZURE_OPENAI_API_VERSION'] = '2024-02-01'
 }
 
-# Step 3: Create/verify resource group
+# Step 3: Initialize GitHub config (if using GitHub mode)
+if (-not $UseLocalDocker -and -not $UseLocalFiles) {
+    Initialize-GitHubConfig
+}
+
+# Step 4: Create/verify resource group
 New-ResourceGroup
 
-# Step 4: Create/verify ACR
+# Step 5: Create/verify ACR
 New-ContainerRegistry
 
-# Step 5: Create/verify storage account
+# Step 6: Create/verify storage account
 $envFile = New-StorageAccount -EnvFile $envFile
 
-# Step 6: Build Docker image
+# Step 7: Build Docker image
 if ($UseLocalDocker) {
     Build-WithLocalDocker
-}
-else {
-    Build-WithACR
+} elseif ($UseLocalFiles) {
+    Build-WithLocalFilesACR
+} else {
+    Build-WithGitHubACR
 }
 
-# Step 7: Deploy container
+# Step 8: Deploy container
 Deploy-Container -EnvFile $envFile
 
-# Step 8: Save deployment info
+# Step 9: Save deployment info
 Save-DeploymentInfo -EnvFile $envFile
 
-# Step 9: Show summary
+# Step 10: Show summary
 Show-Summary -EnvFile $envFile
 
 Write-Host ""
