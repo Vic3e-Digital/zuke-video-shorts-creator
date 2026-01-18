@@ -25,12 +25,19 @@ def download_youtube_video(url):
             print("⚠️  No cookies file found. YouTube may block requests.")
             print("   To fix: Place 'youtube_cookies.txt' in the app directory")
         
+        # Get proxy configuration from environment
+        proxy_url = os.environ.get('YOUTUBE_PROXY_URL', None)  # Format: http://user:pass@proxy.com:port
+        
         # First, get video info to show available formats
         print("Fetching video information...")
+        if proxy_url:
+            print(f"🔒 Using proxy for YouTube downloads")
+        
         ydl_opts_info = {
             'quiet': True,
             'no_warnings': True,
             'cookiefile': cookies_file if use_cookies else None,
+            'proxy': proxy_url,  # Add proxy support
             'extractor_args': {
                 'youtube': {
                     'player_client': ['ios', 'android', 'web'],
@@ -124,6 +131,7 @@ def download_youtube_video(url):
             'outtmpl': output_template,
             'merge_output_format': 'mp4',
             'cookiefile': cookies_file if use_cookies else None,
+            'proxy': proxy_url,  # Add proxy support
             'extractor_args': {
                 'youtube': {
                     'player_client': ['ios', 'android', 'web'],
