@@ -14,6 +14,9 @@ pip-delete-this-directory.txt
 *.mp4
 *.webm
 *.m4a
+*.mkv
+*.avi
+*.mov
 
 # Virtual environment
 venv/
@@ -75,6 +78,20 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Archives and compressed files
+*.tar.gz
+*.tgz
+*.tar
+*.zip
+*.rar
+*.7z
+source.tar.gz
+source-archive.tar.gz
+.source-archive.tar.gz
+test-archive.tar.gz
+*.tar.bz2
+*.tar.xz
 
 # Docker
 .dockerignore
