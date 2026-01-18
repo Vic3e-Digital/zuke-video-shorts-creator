@@ -717,6 +717,35 @@
                                 Enter your n8n webhook URL where the video processing request will be sent
                             </div>
                         </div>
+
+                        <!-- API Mode Toggle -->
+                        <div class="form-group" style="margin-top: 16px;">
+                            <div class="toggle-option">
+                                <input 
+                                    type="checkbox" 
+                                    id="useDirectApi"
+                                    v-model="useDirectApi"
+                                >
+                                <label for="useDirectApi" class="toggle-label">
+                                    <div class="toggle-title">Direct Azure API Mode</div>
+                                    <div class="toggle-desc">Skip n8n and send directly to Azure (for testing)</div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Azure API URL (shown when direct mode is enabled) -->
+                        <div class="form-group" v-if="useDirectApi" style="margin-top: 12px;">
+                            <label for="azureApiUrl">Azure API URL</label>
+                            <input 
+                                type="url" 
+                                id="azureApiUrl"
+                                v-model="azureApiUrl" 
+                                placeholder="http://zuke-video-XXXX.eastus.azurecontainer.io:8000"
+                            >
+                            <div class="field-note">
+                                Your Azure Container Instance API endpoint
+                            </div>
+                        </div>
                     </div>
 
                     <form @submit.prevent="submitToWebhook">
@@ -926,6 +955,51 @@
                                 <pre>{{ JSON.stringify(lastPayload, null, 2) }}</pre>
                             </div>
                         </div>
+
+                        <!-- Processing Results -->
+                        <div v-if="processingResults && processingResults.success" class="section" style="margin-top: 16px;">
+                            <div class="section-title">
+                                <i class="fas fa-video"></i>
+                                Generated Videos
+                            </div>
+                            
+                            <div v-for="(file, index) in processingResults.output_files" :key="index" 
+                                 style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border-color);">
+                                <div style="display: flex; justify-content: space-between; align-items: start; gap: 12px;">
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600; font-size: 14px; color: var(--dark-neutral); margin-bottom: 4px;">
+                                            <i class="fas fa-film" style="color: var(--primary-orange); margin-right: 8px;"></i>
+                                            {{ file.filename }}
+                                        </div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">
+                                            {{ formatFileSize(file.size) }} • {{ file.storage === 'azure_blob' ? '☁️ Azure Blob' : '💾 Local' }}
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <a :href="file.url" target="_blank" 
+                                           style="padding: 8px 16px; background: var(--primary-orange); color: white; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 500;">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                        <button @click="copyToClipboard(file.url)" 
+                                                style="padding: 8px 12px; background: white; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer;">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 8px;">
+                                    <input type="text" :value="file.url" readonly 
+                                           style="width: 100%; padding: 8px; font-size: 12px; background: white; border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-secondary);">
+                                </div>
+                            </div>
+                            
+                            <div style="background: var(--success-bg); border: 1px solid var(--success-border); border-radius: 6px; padding: 12px; margin-top: 12px;">
+                                <div style="font-size: 13px; color: var(--success-text);">
+                                    <i class="fas fa-check-circle"></i>
+                                    <strong>Job ID:</strong> {{ processingResults.job_id }}<br>
+                                    <strong>Processing Time:</strong> {{ processingResults.processing_time?.toFixed(1) }} seconds
+                                </div>
+                            </div>
+                        </div>
                     </form>
                 </div>
 
@@ -998,142 +1072,214 @@
     </div>
 
     <script>
-        const { createApp } = Vue;
+    const { createApp } = Vue;
 
-        createApp({
-            data() {
+    createApp({
+        data() {
+            return {
+                // API Configuration
+                webhookUrl: '',
+                azureApiUrl: 'http://zuke-video-8164.eastus.azurecontainer.io:8000',
+                useDirectApi: false, // Toggle between n8n webhook and direct Azure API
+                
+                // Form inputs
+                inputType: 'youtube',
+                youtubeUrl: 'https://www.youtube.com/watch?v=FeirRhBRc5w',
+                filePath: '',
+                numClips: 3,
+                autoApprove: true, // Default to true for Azure processing
+                outputTypes: ['subtitled'],
+                jobId: '',
+                
+                // State
+                loading: false,
+                status: null,
+                lastPayload: null,
+                processingResults: null,
+                pollingInterval: null
+            };
+        },
+        computed: {
+            isFormValid() {
+                if (!this.useDirectApi && !this.webhookUrl) return false;
+                if (this.inputType === 'youtube' && !this.youtubeUrl) return false;
+                if (this.inputType === 'local' && !this.filePath) return false;
+                if (this.outputTypes.length === 0) return false;
+                return true;
+            },
+            statusIcon() {
+                const icons = {
+                    success: 'fas fa-check-circle',
+                    error: 'fas fa-exclamation-circle',
+                    loading: 'fas fa-spinner fa-spin',
+                    processing: 'fas fa-cog fa-spin'
+                };
+                return icons[this.status?.type] || 'fas fa-info-circle';
+            },
+            targetUrl() {
+                return this.useDirectApi 
+                    ? `${this.azureApiUrl}/process`
+                    : this.webhookUrl;
+            }
+        },
+        methods: {
+            generateJobId() {
+                return `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            },
+
+            buildPayload() {
                 return {
-                    webhookUrl: '',
-                    inputType: 'youtube',
-                    youtubeUrl: 'https://www.youtube.com/watch?v=FeirRhBRc5w',
-                    filePath: '',
-                    numClips: 3,
-                    autoApprove: false,
-                    outputTypes: ['original', 'original-dimension', 'subtitled'],
-                    jobId: '',
-                    loading: false,
-                    status: null,
-                    lastPayload: null
+                    job_id: this.jobId || this.generateJobId(),
+                    timestamp: new Date().toISOString(),
+                    input_type: this.inputType,
+                    youtube_url: this.inputType === 'youtube' ? this.youtubeUrl : null,
+                    video_file_path: this.inputType === 'local' ? this.filePath : null,
+                    processing_options: {
+                        num_clips: this.numClips,
+                        auto_approve: this.autoApprove,
+                        output_types: this.outputTypes
+                    },
+                    workflow_config: {
+                        source: 'zuke-frontend',
+                        version: '1.0.0',
+                        features_requested: this.outputTypes,
+                        processing_mode: this.autoApprove ? 'batch' : 'interactive'
+                    }
                 };
             },
-            computed: {
-                isFormValid() {
-                    if (!this.webhookUrl) return false;
-                    if (this.inputType === 'youtube' && !this.youtubeUrl) return false;
-                    if (this.inputType === 'local' && !this.filePath) return false;
-                    if (this.outputTypes.length === 0) return false;
-                    return true;
-                },
-                statusIcon() {
-                    const icons = {
-                        success: 'fas fa-check-circle',
-                        error: 'fas fa-exclamation-circle',
-                        loading: 'fas fa-spinner fa-spin'
+
+            async submitToWebhook() {
+                if (!this.isFormValid) return;
+
+                this.loading = true;
+                this.status = null;
+                this.processingResults = null;
+
+                try {
+                    const payload = this.buildPayload();
+                    this.lastPayload = payload;
+
+                    this.status = {
+                        type: 'processing',
+                        title: 'Processing Video...',
+                        message: `Sending request to ${this.useDirectApi ? 'Azure API' : 'n8n webhook'}. This may take several minutes for video processing.`
                     };
-                    return icons[this.status?.type] || 'fas fa-info-circle';
-                }
-            },
-            methods: {
-                async submitToWebhook() {
-                    if (!this.isFormValid) return;
 
-                    this.loading = true;
-                    this.status = null;
+                    const response = await axios.post(this.targetUrl, payload, {
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        timeout: 1800000 // 30 minutes timeout for video processing
+                    });
 
-                    try {
-                        // Prepare payload for n8n webhook
-                        const payload = {
-                            // Job metadata
-                            job_id: this.jobId || `job_${Date.now()}`,
-                            timestamp: new Date().toISOString(),
-                            
-                            // Video input
-                            input_type: this.inputType,
-                            youtube_url: this.inputType === 'youtube' ? this.youtubeUrl : null,
-                            video_file_path: this.inputType === 'local' ? this.filePath : null,
-                            
-                            // Processing configuration
-                            processing_options: {
-                                num_clips: this.numClips,
-                                auto_approve: this.autoApprove,
-                                output_types: this.outputTypes
-                            },
-                            
-                            // Additional metadata for n8n workflow
-                            workflow_config: {
-                                source: 'zuke-frontend',
-                                version: '1.0.0',
-                                features_requested: this.outputTypes,
-                                processing_mode: this.autoApprove ? 'batch' : 'interactive'
-                            }
-                        };
+                    // Handle successful response
+                    this.processingResults = response.data;
 
-                        this.lastPayload = payload;
-
-                        // Send to n8n webhook
-                        const response = await axios.post(this.webhookUrl, payload, {
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            timeout: 10000 // 10 second timeout
-                        });
-
+                    if (response.data.success) {
+                        const outputFiles = response.data.output_files || [];
                         this.status = {
                             type: 'success',
-                            title: 'Successfully sent to n8n!',
-                            message: `Webhook responded with status ${response.status}. Your video processing request has been queued in n8n workflow.`
+                            title: 'Video Processing Complete!',
+                            message: `Successfully generated ${outputFiles.length} video clip(s) in ${response.data.processing_time?.toFixed(1) || '?'} seconds.`
                         };
-
-                    } catch (error) {
-                        console.error('Webhook error:', error);
-                        
-                        let errorMessage = 'Failed to send request to n8n webhook.';
-                        
-                        if (error.code === 'ECONNREFUSED') {
-                            errorMessage = 'Cannot connect to n8n webhook. Please check the webhook URL.';
-                        } else if (error.response) {
-                            errorMessage = `n8n webhook returned error ${error.response.status}: ${error.response.statusText}`;
-                        } else if (error.code === 'ENOTFOUND') {
-                            errorMessage = 'Webhook URL not found. Please verify the n8n webhook URL.';
-                        }
-
+                    } else {
                         this.status = {
                             type: 'error',
-                            title: 'Webhook Error',
-                            message: errorMessage
+                            title: 'Processing Failed',
+                            message: response.data.error_message || response.data.message || 'Unknown error occurred'
                         };
-                    } finally {
-                        this.loading = false;
                     }
-                },
 
-                resetForm() {
-                    this.youtubeUrl = '';
-                    this.filePath = '';
-                    this.numClips = 3;
-                    this.autoApprove = false;
-                    this.outputTypes = ['original', 'original-dimension', 'subtitled'];
-                    this.jobId = '';
+                } catch (error) {
+                    console.error('API error:', error);
+                    
+                    let errorMessage = 'Failed to process video.';
+                    
+                    if (error.code === 'ECONNABORTED') {
+                        errorMessage = 'Request timed out. The video may still be processing. Check your n8n workflow.';
+                    } else if (error.code === 'ERR_NETWORK') {
+                        errorMessage = 'Network error. Check if the API/webhook URL is correct and accessible.';
+                    } else if (error.response) {
+                        errorMessage = `Server error ${error.response.status}: ${error.response.data?.message || error.response.statusText}`;
+                    }
+
+                    this.status = {
+                        type: 'error',
+                        title: 'Request Failed',
+                        message: errorMessage
+                    };
+                } finally {
+                    this.loading = false;
                 }
             },
 
-            mounted() {
-                // Load saved webhook URL from localStorage
-                const savedWebhookUrl = localStorage.getItem('zuke_webhook_url');
-                if (savedWebhookUrl) {
-                    this.webhookUrl = savedWebhookUrl;
+            async checkHealth() {
+                try {
+                    const response = await axios.get(`${this.azureApiUrl}/`, { timeout: 5000 });
+                    return response.data.status === 'running';
+                } catch {
+                    return false;
                 }
             },
 
-            watch: {
-                // Save webhook URL to localStorage
-                webhookUrl(newUrl) {
-                    if (newUrl) {
-                        localStorage.setItem('zuke_webhook_url', newUrl);
-                    }
-                }
+            copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    // Brief visual feedback could be added here
+                    console.log('Copied to clipboard:', text);
+                });
+            },
+
+            formatFileSize(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            },
+
+            resetForm() {
+                this.youtubeUrl = '';
+                this.filePath = '';
+                this.numClips = 3;
+                this.autoApprove = true;
+                this.outputTypes = ['subtitled'];
+                this.jobId = '';
+                this.status = null;
+                this.processingResults = null;
             }
-        }).mount('#app');
-    </script>
+        },
+
+        mounted() {
+            // Load saved settings from localStorage
+            const savedWebhookUrl = localStorage.getItem('zuke_webhook_url');
+            const savedAzureUrl = localStorage.getItem('zuke_azure_url');
+            const savedUseDirectApi = localStorage.getItem('zuke_use_direct_api');
+            
+            if (savedWebhookUrl) this.webhookUrl = savedWebhookUrl;
+            if (savedAzureUrl) this.azureApiUrl = savedAzureUrl;
+            if (savedUseDirectApi) this.useDirectApi = savedUseDirectApi === 'true';
+
+            // Check Azure API health on load
+            this.checkHealth().then(isHealthy => {
+                if (isHealthy) {
+                    console.log('✅ Azure API is healthy');
+                } else {
+                    console.warn('⚠️ Azure API health check failed');
+                }
+            });
+        },
+
+        watch: {
+            webhookUrl(newUrl) {
+                if (newUrl) localStorage.setItem('zuke_webhook_url', newUrl);
+            },
+            azureApiUrl(newUrl) {
+                if (newUrl) localStorage.setItem('zuke_azure_url', newUrl);
+            },
+            useDirectApi(newVal) {
+                localStorage.setItem('zuke_use_direct_api', String(newVal));
+            }
+        }
+    }).mount('#app');
+</script>
+
 </body>
 </html>

@@ -170,7 +170,16 @@ async def process_video_task(job_id: str, request: ProcessingRequest, start_time
         job_status.progress = 30
         job_status.message = "Transcribing audio..."
         
-        transcriptions = transcribeAudio(audio_path)
+        transcriptions_result = transcribeAudio(audio_path)
+        
+        # Handle new dict format from faster-whisper
+        if isinstance(transcriptions_result, dict):
+            transcriptions = [[seg['text'], seg['start'], seg['end']] 
+                            for seg in transcriptions_result['segments']]
+        else:
+            # Backwards compatibility with old format
+            transcriptions = transcriptions_result
+            
         logger.info(f"Transcription completed: {len(transcriptions)} segments")
         
         # Step 4: Get highlights

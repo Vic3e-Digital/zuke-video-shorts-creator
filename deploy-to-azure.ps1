@@ -1599,6 +1599,7 @@ function Deploy-Container {
         "--resource-group $($script:Config.ResourceGroup)",
         "--name $($script:Config.ContainerName)",
         "--image '$imageName'",
+        "--os-type Linux",
         "--registry-login-server '$($script:AcrServer)'",
         "--registry-username '$acrUser'",
         "--registry-password '$acrPassword'",

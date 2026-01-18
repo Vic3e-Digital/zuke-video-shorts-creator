@@ -122,7 +122,16 @@ if Vid:
     Audio = extractAudio(Vid, audio_file)
     if Audio:
 
-        transcriptions = transcribeAudio(Audio)
+        transcriptions_result = transcribeAudio(Audio)
+        
+        # Handle new dict format from faster-whisper
+        if isinstance(transcriptions_result, dict):
+            transcriptions = [[seg['text'], seg['start'], seg['end']] 
+                            for seg in transcriptions_result['segments']]
+        else:
+            # Backwards compatibility with old format
+            transcriptions = transcriptions_result
+            
         if len(transcriptions) > 0:
             print(f"\n{'='*60}")
             print(f"TRANSCRIPTION SUMMARY: {len(transcriptions)} segments")
