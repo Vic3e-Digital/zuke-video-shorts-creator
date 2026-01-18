@@ -75,7 +75,7 @@ urllib3==2.4.0
 webrtcvad-wheels==2.0.14
 yarl==1.20.0
 zstandard==0.25.0
-yt-dlp>=2025.01.11
+yt-dlp==2025.03.31
 
 # Azure API server
 fastapi
