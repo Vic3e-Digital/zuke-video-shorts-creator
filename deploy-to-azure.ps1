@@ -1592,12 +1592,6 @@ function Deploy-Container {
         $secureEnvVars += "AZURE_STORAGE_SAS_TOKEN=$($EnvFile['AZURE_STORAGE_SAS_TOKEN'])"
     }
 
-    # Add YouTube cookies if available
-    if ($EnvFile.ContainsKey('YOUTUBE_COOKIES_BASE64') -and -not [string]::IsNullOrWhiteSpace($EnvFile['YOUTUBE_COOKIES_BASE64'])) {
-        Write-Info "Adding YouTube cookies to container..."
-        $secureEnvVars += "YOUTUBE_COOKIES_BASE64=$($EnvFile['YOUTUBE_COOKIES_BASE64'])"
-    }
-
     # Generate DNS label (or use preserved one from Recreate)
     if (-not $dnsLabel) {
         $dnsLabel = "$ResourcePrefix-video-$(Get-Random -Maximum 9999)"
