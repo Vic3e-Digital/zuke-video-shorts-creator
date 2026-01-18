@@ -20,6 +20,10 @@ def download_youtube_video(url):
         ydl_opts_info = {
             'quiet': True,
             'no_warnings': True,
+            'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
         }
         
         with yt_dlp.YoutubeDL(ydl_opts_info) as ydl:
@@ -102,6 +106,10 @@ def download_youtube_video(url):
             'format': selected_format,
             'outtmpl': output_template,
             'merge_output_format': 'mp4',
+            'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
             'postprocessors': [{
                 'key': 'FFmpegVideoConvertor',
                 'preferedformat': 'mp4',
