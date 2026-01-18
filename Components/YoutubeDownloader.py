@@ -15,15 +15,30 @@ def download_youtube_video(url):
         if not os.path.exists('videos'):
             os.makedirs('videos')
         
-        # Check if cookies file exists
+        # Check if cookies file exists or create from environment variable
         cookies_file = os.path.join(os.getcwd(), 'youtube_cookies.txt')
         use_cookies = os.path.exists(cookies_file)
+        
+        # If no file, try to get from environment variable
+        if not use_cookies:
+            cookies_base64 = os.environ.get('YOUTUBE_COOKIES_BASE64', '')
+            if cookies_base64:
+                import base64
+                try:
+                    cookies_content = base64.b64decode(cookies_base64).decode('utf-8')
+                    with open(cookies_file, 'w') as f:
+                        f.write(cookies_content)
+                    use_cookies = True
+                    print(f"✓ Decoded cookies from environment variable")
+                except Exception as e:
+                    print(f"⚠️  Failed to decode cookies from env: {e}")
         
         if use_cookies:
             print(f"✓ Using cookies from: {cookies_file}")
         else:
             print("⚠️  No cookies file found. YouTube may block requests.")
             print("   To fix: Place 'youtube_cookies.txt' in the app directory")
+            print("   Or set YOUTUBE_COOKIES_BASE64 environment variable")
         
         # First, get video info to show available formats
         print("Fetching video information...")
