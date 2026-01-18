@@ -79,7 +79,7 @@ EXPOSE 8000
 # Create startup script that downloads cookies and starts API
 RUN echo '#!/bin/bash\n\
 echo "Downloading YouTube cookies from Azure Blob Storage..."\n\
-curl -f -o /app/youtube_cookies.txt "https://zukestorage3833.blob.core.windows.net/config/youtube_cookies.txt" || echo "Warning: Could not download cookies"\n\
+curl -f -o /app/youtube_cookies.txt "https://zukestorage3833.blob.core.windows.net/config/youtube_cookies.txt?se=2027-12-31T23%3A59%3A59Z&sp=r&sv=2022-11-02&sr=b&sig=yVNfNlTGNcDO45q%2F%2FvkkVtcugrUHgfwDJW6DKC%2FuZVo%3D" || echo "Warning: Could not download cookies"\n\
 if [ -f /app/youtube_cookies.txt ]; then\n\
     echo "✓ Cookies downloaded successfully ($(wc -c < /app/youtube_cookies.txt) bytes)"\n\
 else\n\
