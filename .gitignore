@@ -29,6 +29,12 @@ ENV/
 .env.local
 .env.*.local
 
+# Cookies and sensitive files
+youtube_cookies.txt
+cookies.txt
+*.cookies
+*.txt.bak
+
 # Logs
 *.log
 logs/
