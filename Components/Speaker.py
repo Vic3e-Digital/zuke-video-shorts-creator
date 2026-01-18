@@ -5,14 +5,42 @@ import wave
 import contextlib
 from pydub import AudioSegment
 import os
+import urllib.request
 
-# Update paths to the model files
-prototxt_path = "models/deploy.prototxt"
-model_path = "models/res10_300x300_ssd_iter_140000_fp16.caffemodel"
-temp_audio_path = "temp_audio.wav"
+# Get absolute path to models directory
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODELS_DIR = os.path.join(BASE_DIR, "models")
+
+# Model file paths
+prototxt_path = os.path.join(MODELS_DIR, "deploy.prototxt")
+model_path = os.path.join(MODELS_DIR, "res10_300x300_ssd_iter_140000.caffemodel")
+temp_audio_path = os.path.join(BASE_DIR, "temp_audio.wav")
+
+def ensure_face_detection_models():
+    """Download face detection models if they don't exist."""
+    os.makedirs(MODELS_DIR, exist_ok=True)
+    
+    # Download prototxt if missing
+    if not os.path.exists(prototxt_path):
+        print("📥 Downloading face detection prototxt...")
+        url = "https://raw.githubusercontent.com/opencv/opencv/master/samples/dnn/face_detector/deploy.prototxt"
+        urllib.request.urlretrieve(url, prototxt_path)
+        print(f"✅ Downloaded: {prototxt_path}")
+    
+    # Download caffemodel if missing
+    if not os.path.exists(model_path):
+        print("📥 Downloading face detection model (~10MB)...")
+        url = "https://raw.githubusercontent.com/opencv/opencv_3rdparty/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel"
+        urllib.request.urlretrieve(url, model_path)
+        print(f"✅ Downloaded: {model_path}")
+
+# Ensure models exist before loading
+ensure_face_detection_models()
 
 # Load DNN model
+print(f"🔄 Loading face detection model from: {model_path}")
 net = cv2.dnn.readNetFromCaffe(prototxt_path, model_path)
+print("✅ Face detection model loaded")
 
 # Initialize VAD
 vad = webrtcvad.Vad(2)  # Aggressiveness mode from 0 to 3
@@ -34,11 +62,13 @@ def process_audio_frame(audio_data, sample_rate=16000, frame_duration_ms=30):
         yield frame
 
 global Frames
-Frames = [] # [x,y,w,h]
+Frames = []  # [x,y,w,h]
 
 def detect_faces_and_speakers(input_video_path, output_video_path):
-    # Return Frams:
+    # Return Frames:
     global Frames
+    Frames = []  # Reset frames for each call
+    
     # Extract audio from the video
     extract_audio_from_video(input_video_path, temp_audio_path)
 
@@ -101,7 +131,7 @@ def detect_faces_and_speakers(input_video_path, output_video_path):
 
                 # Assuming lips are approximately at the bottom third of the face
                 lip_distance = abs((y + 2 * face_height // 3) - (y1))
-                print(lip_distance)
+                # print(lip_distance)  # Commented out for cleaner logs
 
                 # Combine visual and audio cues
                 if lip_distance >= MaxDif and is_speaking_audio:  # Adjust the threshold as needed
@@ -119,19 +149,18 @@ def detect_faces_and_speakers(input_video_path, output_video_path):
                 Frames.append(None)
 
         out.write(frame)
-        # cv2.imshow('Frame', frame)
-        # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #     break
 
     cap.release()
     out.release()
     cv2.destroyAllWindows()
-    os.remove(temp_audio_path)
-
+    
+    # Clean up temp audio file
+    if os.path.exists(temp_audio_path):
+        os.remove(temp_audio_path)
 
 
 if __name__ == "__main__":
-    detect_faces_and_speakers()
+    detect_faces_and_speakers("test_video.mp4", "output_video.mp4")
     print(Frames)
     print(len(Frames))
     print(Frames[1:5])
