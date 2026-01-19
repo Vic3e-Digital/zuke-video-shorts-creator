@@ -15,6 +15,7 @@ import json
 import tempfile
 import time
 import sys
+import threading
 from pathlib import Path
 from datetime import datetime
 
@@ -41,6 +42,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# In-memory job status storage (use Redis/DB for production)
+job_status_store = {}
+job_status_lock = threading.Lock()
+
 class VideoProcessingRequest(BaseModel):
     job_id: str
     timestamp: str
@@ -54,7 +59,18 @@ class VideoProcessingResponse(BaseModel):
     success: bool
     job_id: str
     message: str
-    processing_time: float
+    processing_time: Optional[float] = None
+    output_files: List[Dict[str, Any]] = []
+    error_message: Optional[str] = None
+
+class JobStatusResponse(BaseModel):
+    job_id: str
+    status: str  # "queued", "processing", "completed", "failed"
+    message: str
+    progress: Optional[float] = None  # 0-100
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    processing_time: Optional[float] = None
     output_files: List[Dict[str, Any]] = []
     error_message: Optional[str] = None
 
@@ -66,6 +82,214 @@ async def health_check():
         "status": "running",
         "timestamp": datetime.utcnow().isoformat(),
         "version": "1.0.0"
+    }
+
+def update_job_status(job_id: str, status: str, message: str = "", **kwargs):
+    """Update job status in store (thread-safe)"""
+    with job_status_lock:
+        if job_id not in job_status_store:
+            job_status_store[job_id] = {
+                "job_id": job_id,
+                "status": status,
+                "message": message,
+                "started_at": datetime.utcnow().isoformat(),
+                "progress": 0,
+                "output_files": [],
+                "error_message": None
+            }
+        else:
+            job_status_store[job_id]["status"] = status
+            job_status_store[job_id]["message"] = message
+        
+        # Update additional fields
+        for key, value in kwargs.items():
+            job_status_store[job_id][key] = value
+        
+        print(f"📊 Job {job_id}: {status} - {message}", flush=True)
+
+def process_video_background(request: VideoProcessingRequest):
+    """Background task to process video"""
+    start_time = time.time()
+    job_id = request.job_id
+    
+    try:
+        update_job_status(job_id, "processing", "Starting video processing...", progress=5)
+        
+        # Build command
+        cmd = ["python3", "main.py"]
+        
+        # Add number of clips
+        num_clips = request.processing_options.get("num_clips", 3)
+        cmd.extend(["--clips", str(num_clips)])
+        
+        # Add output types
+        output_types = request.processing_options.get("output_types", ["subtitled"])
+        cmd.extend(["--output-types"] + output_types)
+        
+        # Add auto-approve if specified
+        if request.processing_options.get("auto_approve", False):
+            cmd.append("--auto-approve")
+        
+        # Add video URL or path
+        if request.input_type == "youtube" and request.youtube_url:
+            cmd.append(request.youtube_url)
+        elif request.input_type == "local" and request.video_file_path:
+            cmd.append(request.video_file_path)
+        else:
+            raise ValueError("Invalid input: must provide youtube_url or video_file_path")
+        
+        update_job_status(job_id, "processing", "Downloading and transcribing video...", progress=20)
+        
+        # Execute processing
+        print(f"🚀 Executing command: {' '.join(cmd)}", flush=True)
+        
+        result = subprocess.run(
+            cmd,
+            cwd="/app",
+            capture_output=True,
+            text=True,
+            timeout=7200,  # 2 hours timeout
+            env={**os.environ}
+        )
+        
+        # Log the output
+        print(f"\n{'='*50}", flush=True)
+        print(f"=== SUBPROCESS OUTPUT ===", flush=True)
+        print(f"{'='*50}", flush=True)
+        print(f"STDOUT:\n{result.stdout}", flush=True)
+        print(f"STDERR:\n{result.stderr}", flush=True)
+        
+        update_job_status(job_id, "processing", "Uploading output files...", progress=90)
+        
+        # Check for output files
+        output_files = []
+        output_dir = Path("/app/output")
+        
+        if output_dir.exists():
+            # Initialize Azure Blob Storage if available
+            storage_manager = None
+            if AZURE_STORAGE_AVAILABLE:
+                try:
+                    storage_manager = get_storage_manager()
+                    print("✅ Azure Blob Storage initialized", flush=True)
+                except Exception as e:
+                    print(f"⚠️ Failed to initialize Azure Blob Storage: {e}", flush=True)
+                    storage_manager = None
+            
+            for mp4_file in output_dir.glob("**/*.mp4"):
+                file_size = mp4_file.stat().st_size
+                
+                # Upload to Azure Blob Storage if available
+                if storage_manager:
+                    try:
+                        print(f"📤 Uploading {mp4_file.name} to Azure Blob Storage...", flush=True)
+                        file_url = storage_manager.upload_file(
+                            file_path=str(mp4_file),
+                            blob_name=f"{request.job_id}/{mp4_file.name}",
+                            folder="videos"
+                        )
+                        print(f"✅ Upload successful: {file_url}", flush=True)
+                        storage_type = "azure_blob"
+                    except Exception as upload_error:
+                        print(f"❌ Upload failed: {upload_error}", flush=True)
+                        import traceback
+                        traceback.print_exc()
+                        # Fallback to local path
+                        file_url = f"/app/output/{mp4_file.name}"
+                        storage_type = "local"
+                else:
+                    # No storage available - return local path
+                    file_url = f"/app/output/{mp4_file.name}"
+                    storage_type = "local"
+                    print(f"⚠️ No cloud storage - file saved locally: {file_url}", flush=True)
+                
+                output_files.append({
+                    "filename": mp4_file.name,
+                    "size": file_size,
+                    "url": file_url,
+                    "type": "video/mp4",
+                    "created_at": datetime.utcnow().isoformat(),
+                    "storage": storage_type
+                })
+        
+        processing_time = time.time() - start_time
+        
+        # Check if successful
+        if len(output_files) == 0:
+            error_details = f"STDOUT:\n{result.stdout[:3000]}\n\nSTDERR:\n{result.stderr[:3000]}\n\nReturn code: {result.returncode}"
+            print(f"❌ No output files generated. Details:\n{error_details}", flush=True)
+            update_job_status(
+                job_id, 
+                "failed", 
+                "No video clips generated",
+                progress=100,
+                completed_at=datetime.utcnow().isoformat(),
+                processing_time=processing_time,
+                error_message=error_details
+            )
+        else:
+            update_job_status(
+                job_id,
+                "completed",
+                f"Successfully generated {len(output_files)} video clips",
+                progress=100,
+                completed_at=datetime.utcnow().isoformat(),
+                processing_time=processing_time,
+                output_files=output_files
+            )
+            
+    except subprocess.TimeoutExpired:
+        processing_time = time.time() - start_time
+        update_job_status(
+            job_id,
+            "failed",
+            "Processing timed out after 2 hours",
+            progress=100,
+            completed_at=datetime.utcnow().isoformat(),
+            processing_time=processing_time,
+            error_message="Video processing took longer than 2 hours"
+        )
+    except Exception as e:
+        processing_time = time.time() - start_time
+        print(f"❌ Exception in background processing: {type(e).__name__}: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        update_job_status(
+            job_id,
+            "failed",
+            f"Processing failed: {str(e)}",
+            progress=100,
+            completed_at=datetime.utcnow().isoformat(),
+            processing_time=processing_time,
+            error_message=str(e)
+        )
+
+@app.get("/status/{job_id}", response_model=JobStatusResponse)
+async def get_job_status(job_id: str):
+    """Get the status of a processing job"""
+    with job_status_lock:
+        if job_id not in job_status_store:
+            raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+        
+        return JobStatusResponse(**job_status_store[job_id])
+
+@app.post("/process-async")
+async def process_video_async(request: VideoProcessingRequest, background_tasks: BackgroundTasks):
+    """
+    Start video processing in background and return immediately
+    Use /status/{job_id} to check progress
+    """
+    # Initialize job status
+    update_job_status(request.job_id, "queued", "Job queued for processing")
+    
+    # Add background task
+    background_tasks.add_task(process_video_background, request)
+    
+    return {
+        "job_id": request.job_id,
+        "status": "queued",
+        "message": "Job queued for processing. Use /status/{job_id} to check progress.",
+        "status_url": f"/status/{request.job_id}"
     }
 
 @app.get("/debug/test-main")

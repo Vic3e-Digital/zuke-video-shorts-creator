@@ -1525,8 +1525,9 @@
             return {
                 // API Configuration
                 webhookUrl: '',
-                azureApiUrl: 'http://zuke-video-8164.eastus.azurecontainer.io:8000',
+                azureApiUrl: 'http://zuke-video-4563.eastus.azurecontainer.io:8000',
                 useDirectApi: false,
+                useAsyncProcessing: true,
                 
                 // Form inputs
                 inputType: 'youtube',
@@ -1861,6 +1862,11 @@
                 const payload = this.buildPayload();
                 this.lastPayload = payload;
 
+                // Check if using async processing
+                if (this.useAsyncProcessing && this.useDirectApi) {
+                    return await this.submitAsync(payload);
+                }
+
                 this.status = {
                     type: 'processing',
                     title: 'Processing Video...',
@@ -1873,6 +1879,103 @@
                     },
                     timeout: 1800000 // 30 minutes timeout
                 });
+            },
+
+            async submitAsync(payload) {
+                // Submit to async endpoint
+                this.status = {
+                    type: 'processing',
+                    title: 'Submitting Job...',
+                    message: 'Sending video processing request...'
+                };
+
+                const response = await axios.post(
+                    `${this.azureApiUrl}/process-async`,
+                    payload,
+                    {
+                        headers: { 'Content-Type': 'application/json' },
+                        timeout: 10000 // 10 seconds for initial submission
+                    }
+                );
+
+                // Start polling for status
+                const jobId = response.data.job_id;
+                this.status = {
+                    type: 'processing',
+                    title: 'Job Queued',
+                    message: `Job ${jobId} queued. Checking status...`
+                };
+
+                return await this.pollJobStatus(jobId);
+            },
+
+            async pollJobStatus(jobId) {
+                const maxAttempts = 360; // 360 * 5 seconds = 30 minutes max
+                let attempts = 0;
+                let lastProgress = 0;
+
+                while (attempts < maxAttempts) {
+                    try {
+                        const statusResponse = await axios.get(
+                            `${this.azureApiUrl}/status/${jobId}`,
+                            { timeout: 10000 }
+                        );
+
+                        const statusData = statusResponse.data;
+                        const progress = statusData.progress || 0;
+                        
+                        // Update progress message
+                        this.status = {
+                            type: 'processing',
+                            title: `${statusData.status.toUpperCase()}: ${progress}%`,
+                            message: statusData.message
+                        };
+
+                        // Check if completed or failed
+                        if (statusData.status === 'completed') {
+                            return {
+                                data: {
+                                    success: true,
+                                    job_id: jobId,
+                                    message: statusData.message,
+                                    processing_time: statusData.processing_time,
+                                    output_files: statusData.output_files
+                                }
+                            };
+                        } else if (statusData.status === 'failed') {
+                            return {
+                                data: {
+                                    success: false,
+                                    job_id: jobId,
+                                    message: statusData.message,
+                                    processing_time: statusData.processing_time,
+                                    error_message: statusData.error_message
+                                }
+                            };
+                        }
+
+                        // Still processing, wait and retry
+                        await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds
+                        attempts++;
+                        lastProgress = progress;
+
+                    } catch (error) {
+                        console.error('Status polling error:', error);
+                        // Retry on error
+                        await new Promise(resolve => setTimeout(resolve, 5000));
+                        attempts++;
+                    }
+                }
+
+                // Timeout
+                return {
+                    data: {
+                        success: false,
+                        job_id: jobId,
+                        message: 'Status polling timed out',
+                        error_message: 'Could not get final status after 30 minutes of polling'
+                    }
+                };
             },
 
                         async checkHealth() {
