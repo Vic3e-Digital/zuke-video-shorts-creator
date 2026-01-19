@@ -1,6 +1,6 @@
 {
   "StorageAccount": "zukestorage3833",
-  "PublicIP": "20.237.36.226",
+  "PublicIP": "48.217.200.26",
   "GitHubRepo": "https://github.com/Vic3e-Digital/zuke-video-shorts-creator.git",
   "GitHubBranch": "main",
   "PublicURL": "http://zuke-video-4563.eastus.azurecontainer.io:8000",
@@ -10,7 +10,7 @@
   "FQDN": "zuke-video-4563.eastus.azurecontainer.io",
   "ContainerName": "zuke-video-processor",
   "Location": "East US",
-  "DeployedAt": "2026-01-19T01:28:55.2649710+02:00",
+  "DeployedAt": "2026-01-19T01:51:30.2472390+02:00",
   "APIEndpoint": "http://zuke-video-4563.eastus.azurecontainer.io:8000/process",
   "AcrServer": "zukevideoacr4089.azurecr.io",
   "AcrName": "zukevideoacr4089",

@@ -246,20 +246,24 @@ async def process_video(request: VideoProcessingRequest):
                 if storage_manager:
                     try:
                         print(f"📤 Uploading {mp4_file.name} to Azure Blob Storage...", flush=True)
-                        blob_info = storage_manager.upload_file(
+                        file_url = storage_manager.upload_file(
                             file_path=str(mp4_file),
-                            blob_name=f"videos/{request.job_id}/{mp4_file.name}",
-                            content_type="video/mp4"
+                            blob_name=f"{request.job_id}/{mp4_file.name}",
+                            folder="videos"
                         )
-                        file_url = blob_info["url"]
                         print(f"✅ Upload successful: {file_url}", flush=True)
+                        storage_type = "azure_blob"
                     except Exception as upload_error:
                         print(f"❌ Upload failed: {upload_error}", flush=True)
+                        import traceback
+                        traceback.print_exc()
                         # Fallback to local path
                         file_url = f"/app/output/{mp4_file.name}"
+                        storage_type = "local"
                 else:
                     # No storage available - return local path
                     file_url = f"/app/output/{mp4_file.name}"
+                    storage_type = "local"
                     print(f"⚠️ No cloud storage - file saved locally: {file_url}", flush=True)
                 
                 output_files.append({
@@ -268,7 +272,7 @@ async def process_video(request: VideoProcessingRequest):
                     "url": file_url,
                     "type": "video/mp4",
                     "created_at": datetime.utcnow().isoformat(),
-                    "storage": "azure_blob" if storage_manager else "local"
+                    "storage": storage_type
                 })
         
         # Calculate processing time
