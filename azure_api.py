@@ -6,6 +6,7 @@ Receives JSON from n8n and returns processed video URLs
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, HttpUrl
 from typing import Optional, List, Dict, Any
 import os
@@ -87,6 +88,27 @@ async def health_check():
         "timestamp": datetime.utcnow().isoformat(),
         "version": "1.0.0"
     }
+
+@app.get("/app/output/{filename}")
+async def download_file(filename: str):
+    """Serve processed video files from /app/output directory"""
+    file_path = Path("/app/output") / filename
+    
+    # Security: prevent directory traversal
+    if not file_path.resolve().is_relative_to(Path("/app/output").resolve()):
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"File not found: {filename}")
+    
+    if not file_path.is_file():
+        raise HTTPException(status_code=400, detail="Not a file")
+    
+    return FileResponse(
+        path=str(file_path),
+        media_type="video/mp4",
+        filename=filename
+    )
 
 def update_job_status(job_id: str, status: str, message: str = "", **kwargs):
     """Update job status in store (thread-safe)"""
