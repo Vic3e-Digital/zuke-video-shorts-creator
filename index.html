@@ -1528,6 +1528,7 @@
                 azureApiUrl: 'http://zuke-video-4563.eastus.azurecontainer.io:8000',
                 useDirectApi: false,
                 useAsyncProcessing: true,
+                showHttpsWarning: false,
                 
                 // Form inputs
                 inputType: 'youtube',
@@ -2037,14 +2038,25 @@
             if (savedAzureUrl) this.azureApiUrl = savedAzureUrl;
             if (savedUseDirectApi) this.useDirectApi = savedUseDirectApi === 'true';
 
-            // Check Azure API health on load
-            this.checkHealth().then(isHealthy => {
-                if (isHealthy) {
-                    console.log('✅ Azure API is healthy');
-                } else {
-                    console.warn('⚠️ Azure API health check failed');
-                }
-            });
+            // Check for mixed content (HTTPS page with HTTP API)
+            const isHttps = window.location.protocol === 'https:';
+            const apiIsHttp = this.azureApiUrl.startsWith('http://');
+            if (isHttps && apiIsHttp) {
+                this.showHttpsWarning = true;
+                console.warn('⚠️ Mixed content detected: HTTPS page trying to access HTTP API');
+                console.warn('💡 Solution: Deploy API with HTTPS or use HTTP frontend');
+            }
+
+            // Check Azure API health on load (skip if mixed content)
+            if (!this.showHttpsWarning) {
+                this.checkHealth().then(isHealthy => {
+                    if (isHealthy) {
+                        console.log('✅ Azure API is healthy');
+                    } else {
+                        console.warn('⚠️ Azure API health check failed');
+                    }
+                });
+            }
         },
 
         beforeUnmount() {
