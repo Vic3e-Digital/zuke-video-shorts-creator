@@ -1815,18 +1815,14 @@
             },
 
             async uploadToAzureStorage(file) {
-                // Azure Storage configuration
-                const storageAccountName = 'zukestorage3833';
-                const containerName = 'videos';
-                const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+                // Upload via backend API (more secure than direct Azure upload)
+                const formData = new FormData();
+                formData.append('file', file);
                 
-                // Note: This uses anonymous blob upload (requires container to allow public uploads)
-                // For production, implement SAS token or backend proxy
-                const uploadUrl = `https://${storageAccountName}.blob.core.windows.net/${containerName}/${fileName}`;
-
                 return new Promise((resolve, reject) => {
                     const xhr = new XMLHttpRequest();
                     
+                    // Track upload progress
                     xhr.upload.addEventListener('progress', (e) => {
                         if (e.lengthComputable) {
                             this.uploadProgress = Math.round((e.loaded * 100) / e.total);
@@ -1834,28 +1830,34 @@
                     });
 
                     xhr.addEventListener('load', () => {
-                        if (xhr.status === 201) {
-                            // Blob uploaded successfully
-                            const blobUrl = `https://${storageAccountName}.blob.core.windows.net/${containerName}/${fileName}`;
-                            this.uploadProgress = null;
-                            resolve(blobUrl);
+                        if (xhr.status === 200) {
+                            try {
+                                const response = JSON.parse(xhr.responseText);
+                                if (response.success && response.url) {
+                                    this.uploadProgress = null;
+                                    resolve(response.url);
+                                } else {
+                                    reject(new Error('Upload response missing URL'));
+                                }
+                            } catch (e) {
+                                reject(new Error('Invalid upload response'));
+                            }
                         } else {
-                            reject(new Error(`Azure Storage upload failed with status ${xhr.status}`));
+                            reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.responseText}`));
                         }
                     });
 
                     xhr.addEventListener('error', () => {
-                        reject(new Error('Azure Storage upload failed: Network error'));
+                        reject(new Error('Network error during upload'));
                     });
 
                     xhr.addEventListener('abort', () => {
-                        reject(new Error('Azure Storage upload aborted'));
+                        reject(new Error('Upload aborted'));
                     });
 
-                    xhr.open('PUT', uploadUrl);
-                    xhr.setRequestHeader('x-ms-blob-type', 'BlockBlob');
-                    xhr.setRequestHeader('Content-Type', file.type || 'video/mp4');
-                    xhr.send(file);
+                    // Use backend upload endpoint
+                    xhr.open('POST', `${this.azureApiUrl}/upload`);
+                    xhr.send(formData);
                 });
             },
 

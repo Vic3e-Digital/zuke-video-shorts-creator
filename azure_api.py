@@ -4,7 +4,7 @@ Azure-compatible API endpoint for video processing
 Receives JSON from n8n and returns processed video URLs
 """
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, HttpUrl
@@ -109,6 +109,59 @@ async def download_file(filename: str):
         media_type="video/mp4",
         filename=filename
     )
+
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """
+    Upload a video file to Azure Blob Storage
+    Returns the public URL of the uploaded file
+    """
+    if not AZURE_STORAGE_AVAILABLE:
+        raise HTTPException(
+            status_code=503, 
+            detail="Azure Blob Storage is not configured. Set AZURE_STORAGE_ACCOUNT_NAME and AZURE_STORAGE_ACCOUNT_KEY environment variables."
+        )
+    
+    try:
+        # Get storage manager
+        storage_manager = get_storage_manager()
+        
+        # Generate unique filename
+        timestamp = int(time.time() * 1000)
+        original_filename = file.filename or "video.mp4"
+        safe_filename = original_filename.replace(" ", "_").replace("/", "_")
+        blob_name = f"{timestamp}_{safe_filename}"
+        
+        # Save to temp file first
+        temp_path = Path(tempfile.gettempdir()) / blob_name
+        with open(temp_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Upload to Azure Blob Storage
+        file_url = storage_manager.upload_file(
+            file_path=str(temp_path),
+            blob_name=blob_name,
+            folder="videos"
+        )
+        
+        # Clean up temp file
+        temp_path.unlink()
+        
+        return {
+            "success": True,
+            "url": file_url,
+            "filename": blob_name,
+            "size": len(content)
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Upload failed: {str(e)}"
+        )
 
 def update_job_status(job_id: str, status: str, message: str = "", **kwargs):
     """Update job status in store (thread-safe)"""
