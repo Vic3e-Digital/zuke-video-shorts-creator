@@ -95,7 +95,7 @@ param(
 
 $script:Config = @{
     ResourceGroup        = "$ResourcePrefix-video-shorts-rg"
-    Location             = "South Africa North"
+    Location             = "East US"
     AcrName              = ""  # Will be set dynamically or from saved config
     ContainerName        = "$ResourcePrefix-video-processor"
     StorageAccountName   = ""  # Will be set dynamically or from saved config
