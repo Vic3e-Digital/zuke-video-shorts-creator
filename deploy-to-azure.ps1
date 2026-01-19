@@ -95,7 +95,7 @@ param(
 
 $script:Config = @{
     ResourceGroup        = "$ResourcePrefix-video-shorts-rg"
-    Location             = "East US"
+    Location             = "South Africa North"
     AcrName              = ""  # Will be set dynamically or from saved config
     ContainerName        = "$ResourcePrefix-video-processor"
     StorageAccountName   = ""  # Will be set dynamically or from saved config
@@ -930,7 +930,7 @@ function New-StorageAccount {
         $tagsString = Get-TagsString
 
         Invoke-AzCommand `
-            -Command "storage account create --name $($script:Config.StorageAccountName) --resource-group $($script:Config.ResourceGroup) --location '$($script:Config.Location)' --sku Standard_LRS --allow-blob-public-access $publicAccessParam --tags $tagsString" `
+            -Command "storage account create --name $($script:Config.StorageAccountName) --resource-group $($script:Config.ResourceGroup) --location '$($script:Config.Location)' --sku Standard_GRS --kind StorageV2 --access-tier Hot --allow-blob-public-access $publicAccessParam --tags $tagsString" `
             -Description "Create storage account" `
             -ExitOnError
 

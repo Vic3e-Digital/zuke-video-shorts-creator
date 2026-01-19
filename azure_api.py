@@ -29,8 +29,8 @@ except ImportError:
     AZURE_STORAGE_AVAILABLE = False
 
 # Base URL for local file access (fallback when Azure Storage unavailable)
-# Set via environment variable or default to localhost (for development)
-BASE_URL = os.getenv('API_BASE_URL', 'http://zuke-video-4563.eastus.azurecontainer.io:8000')
+# Set via environment variable or default to container URL
+BASE_URL = os.getenv('API_BASE_URL', 'http://zuke-video-4563.southafricanorth.azurecontainer.io:8000')
 
 app = FastAPI(
     title="Zuke Video Processor - Azure API",
