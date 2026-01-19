@@ -27,6 +27,10 @@ except ImportError:
     print("⚠️ Azure Blob Storage not available - files will only be stored locally")
     AZURE_STORAGE_AVAILABLE = False
 
+# Base URL for local file access (fallback when Azure Storage unavailable)
+# Set via environment variable or default to localhost (for development)
+BASE_URL = os.getenv('API_BASE_URL', 'http://zuke-video-4563.eastus.azurecontainer.io:8000')
+
 app = FastAPI(
     title="Zuke Video Processor - Azure API",
     description="Azure-deployed video processing for n8n integration",
@@ -194,12 +198,12 @@ def process_video_background(request: VideoProcessingRequest):
                         print(f"❌ Upload failed: {upload_error}", flush=True)
                         import traceback
                         traceback.print_exc()
-                        # Fallback to local path
-                        file_url = f"/app/output/{mp4_file.name}"
+                        # Fallback to container URL
+                        file_url = f"{BASE_URL}/app/output/{mp4_file.name}"
                         storage_type = "local"
                 else:
-                    # No storage available - return local path
-                    file_url = f"/app/output/{mp4_file.name}"
+                    # No storage available - return container URL
+                    file_url = f"{BASE_URL}/app/output/{mp4_file.name}"
                     storage_type = "local"
                     print(f"⚠️ No cloud storage - file saved locally: {file_url}", flush=True)
                 
@@ -481,12 +485,12 @@ async def process_video(request: VideoProcessingRequest):
                         print(f"❌ Upload failed: {upload_error}", flush=True)
                         import traceback
                         traceback.print_exc()
-                        # Fallback to local path
-                        file_url = f"/app/output/{mp4_file.name}"
+                        # Fallback to container URL
+                        file_url = f"{BASE_URL}/app/output/{mp4_file.name}"
                         storage_type = "local"
                 else:
-                    # No storage available - return local path
-                    file_url = f"/app/output/{mp4_file.name}"
+                    # No storage available - return container URL
+                    file_url = f"{BASE_URL}/app/output/{mp4_file.name}"
                     storage_type = "local"
                     print(f"⚠️ No cloud storage - file saved locally: {file_url}", flush=True)
                 
